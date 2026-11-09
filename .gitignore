@@ -12,3 +12,6 @@ dist/
 
 # 本地记忆，不进仓库
 .workbuddy/
+
+# 一次性测试产物，不进仓库
+evals/runs/live-test-*/

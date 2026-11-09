@@ -73,6 +73,14 @@ description: 文案工坊。用户说「写条文案 / 写个口播 / 写条话�
 
 机制、存放位置、冲突处理见 `references/memory.md`。
 
+## 主线：招人内容打法
+
+> 一句话目标：**让看的人主动来找你，想入职、想入行。** 除此之外全是手段。
+
+- 什么能变、什么不能变、怎么验收、发出去没人来怎么调 —— 全在 `references/recruit-playbook.md`。
+- 故事库：`references/story-types.md`（九种套路）。
+- 一句话记法：**内容可变，结局不变——人得来找你。**
+
 ## 入口判断：有文案 / 没文案
 
 | 用户给了什么 | 你的角色 | 怎么处理 |
@@ -260,6 +268,8 @@ output/<YYYY-MM-DD>-<一句话主题>/script.md
 - `references/compliance.md`：极限词、功效宣称、导流、标红格式
 - `references/memory.md`：偏好档案机制
 - `references/library.md`：文案知识库——入库 / 检索 / 规则变更 / 复审
+- `references/story-types.md`：招人故事库——九种套路、怎么换着讲、跳槽型红线
+- `references/recruit-playbook.md`：主线打法——能变什么、不能变什么、验收标准、没人来怎么调
 - `references/rules-refresh.md`：规则自动刷新——什么时候刷、从哪刷、刷完怎么存
 - `references/platform-differences.md`：抖音 / 快手 / 视频号 / 小红书的红线松紧与内容偏好
 - `assets/rules-snapshot.md`：当前规则快照（红线词 / 限流词 / 处罚阶梯）
