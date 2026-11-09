@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "platform": "抖音",
+    "duration": 15,
+    "mode": "multi",
+    "target_tool": "即梦",
+    "style": "realistic",
+    "authorization": {
+      "real_person": "authorized",
+      "minor": "not_applicable",
+      "brand_logo": "none",
+      "medical_claim": "none"
+    }
+  },
+  "style_anchor": "暖调、浅景深、手持微晃、低饱和、真实生活感",
+  "characters": [
+    {
+      "id": "host",
+      "identity_anchor": "28岁女性，圆脸，内双，齐耳短发，偏白",
+      "look": "米色针织衫，素颜，头发微乱"
+    }
+  ],
+  "shots": [
+    {
+      "id": "s1",
+      "duration": 4,
+      "framing": "medium",
+      "camera": "push_in",
+      "subject": "host",
+      "action": "坐在梳妆台前低头看手机，抬头看镜子",
+      "scene": "清晨卧室，梳妆台靠窗，窗外阴天",
+      "light": "侧窗自然光，偏冷",
+      "prompt": "暖调、浅景深、手持微晃、低饱和、真实生活感。28岁女性，圆脸，内双，齐耳短发，偏白；米色针织衫，素颜，头发微乱。表情：眼睛半睁，嘴角下垂，嘴唇微动，正在说话。动作：坐在梳妆台前低头看手机，然后抬头看镜子。场景：清晨卧室，前景梳妆台边缘虚化，中景人物坐姿，背景窗帘和床，台面有玻璃杯。光线：左侧窗户进来的阴天自然光，光比柔和，左脸亮右脸暗，色温偏冷。镜头：中景，眼平高度，缓慢推近，等效50mm，浅景深。构图：人物居中偏左，右侧留白给床。质感：皮肤有细微毛孔，胶片颗粒轻，低饱和偏青。人物结构正常，面部清晰不变形，五官稳定，比例自然，动作不僵硬，画面稳定不抖动。声音：画外女声说「熬夜脸发黄？」，语气疲惫；环境音清晨鸟叫；BGM 轻钢琴 -18dB。",
+      "negative": "水印、字幕、文字、二维码、其他品牌logo、手机号、畸形手、多余人物、面部漂移、塑料感",
+      "character_refs": [
+        "host"
+      ],
+      "line": "熬夜脸发黄？",
+      "voice": "tts_female_warm",
+      "silent": false,
+      "beat": "发现问题：她熬夜后看见镜子里脸黄，愣住",
+      "start": 0.0,
+      "end": 4.0
+    },
+    {
+      "id": "s2",
+      "duration": 6,
+      "framing": "close_up",
+      "camera": "static",
+      "subject": "host",
+      "action": "右手拿起面霜挤在手背，低头看",
+      "scene": "同 s1，梳妆台前",
+      "light": "侧窗自然光，偏冷",
+      "prompt": "接上一镜：她抬头看向镜子，右手空着停在桌面边缘。同一人物，米色针织衫，素颜，头发微乱；右手拿起白色面霜瓶，拇指按泵头，挤出黄豆大小在手背，低头看手背。表情：专注，眉头微皱，嘴唇微动，正在说话。场景：同一梳妆台前，前景面霜瓶边缘虚化，背景窗帘和床。光线：左侧窗户自然光，光比柔和，手背有高光，色温偏冷。镜头：近景，眼平高度，固定机位，等效85mm，浅景深。构图：手部在画面下方三分之二，脸部在上三分之一。质感：皮肤有细微毛孔，膏体半透明，低饱和偏青。整体保持：暖调、浅景深、手持微晃、低饱和、真实生活感。约束：人物结构正常，面部清晰不变形，五官稳定，比例自然，动作不僵硬，画面稳定不抖动。声音：画外女声说「每天早上五分钟，洗把脸涂上它」，语气平缓；环境音水声；BGM 轻钢琴 -18dB。",
+      "negative": "水印、字幕、文字、二维码、其他品牌logo、手机号、畸形手、多余人物、面部漂移、塑料感",
+      "character_refs": [
+        "host"
+      ],
+      "line": "每天早上五分钟，洗把脸涂上它",
+      "voice": "tts_female_warm",
+      "silent": false,
+      "beat": "采取行动：她拿起面霜涂在手背，先试质感",
+      "start": 4.0,
+      "end": 10.0
+    },
+    {
+      "id": "s3",
+      "duration": 5,
+      "framing": "medium",
+      "camera": "push_out",
+      "subject": "host",
+      "action": "抬头看镜子，笑了一下",
+      "scene": "同 s1，梳妆台前",
+      "light": "侧窗自然光，偏冷",
+      "prompt": "接上一镜：她低头看着手背，右手停在手背。同一人物，米色针织衫，抬头看向镜子，嘴角上扬，笑了一下。表情：眼睛弯起，眉毛放松，嘴唇微动，正在说话。场景：同一梳妆台前，背景窗帘和床，台面面霜瓶可见。光线：左侧窗户自然光，光比柔和，左脸亮，色温偏冷。镜头：中景，眼平高度，缓慢拉远，等效50mm，浅景深。构图：人物居中，右侧留白给窗。质感：皮肤有细微毛孔，胶片颗粒轻，低饱和偏青。整体保持：暖调、浅景深、手持微晃、低饱和、真实生活感。约束：人物结构正常，面部清晰不变形，五官稳定，比例自然，动作不僵硬，画面稳定不抖动。声音：画外女声说「气色肉眼可见地亮」，语气上扬；环境音无；BGM 轻钢琴 -16dB。",
+      "negative": "水印、字幕、文字、二维码、其他品牌logo、手机号、畸形手、多余人物、面部漂移、塑料感",
+      "character_refs": [
+        "host"
+      ],
+      "line": "气色肉眼可见地亮",
+      "voice": "tts_female_warm",
+      "silent": false,
+      "beat": "结果显现：抬头看镜子，气色亮了，笑了一下",
+      "start": 10.0,
+      "end": 15.0
+    }
+  ],
+  "handoffs": [
+    {
+      "from": "s1",
+      "to": "s2",
+      "mode": "continuous",
+      "end_state": "抬头看向镜子，右手空着停在桌面边缘",
+      "next_start_state": "看向镜子，右手拿起桌上面霜",
+      "match_on": [
+        "gaze",
+        "hand_position",
+        "screen_direction",
+        "lighting",
+        "wardrobe"
+      ],
+      "tail_frame": "media/s1-tail.png",
+      "head_frame": "media/s2-head.png",
+      "trim_out": 0.3,
+      "trim_in": 0.3
+    },
+    {
+      "from": "s2",
+      "to": "s3",
+      "mode": "continuous",
+      "end_state": "低头看着手背，右手指尖停在手背",
+      "next_start_state": "抬头看向镜子，右手自然放下",
+      "match_on": [
+        "gaze",
+        "hand_position",
+        "lighting",
+        "wardrobe"
+      ],
+      "tail_frame": "media/s2-tail.png",
+      "head_frame": "media/s3-head.png",
+      "trim_out": 0.3,
+      "trim_in": 0.2
+    }
+  ],
+  "ending": {
+    "type": "brand_card",
+    "end_state": "停在落版画面，白底商品图居中，底部一行价格文字"
+  }
+}

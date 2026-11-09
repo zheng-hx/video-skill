@@ -1,0 +1,129 @@
+{
+  "meta": {
+    "platform": "抖音",
+    "duration": 9,
+    "mode": "multi",
+    "style": "anime",
+    "target_tool": "即梦",
+    "authorization": {
+      "real_person": "authorized",
+      "minor": "not_applicable",
+      "brand_logo": "none",
+      "medical_claim": "none"
+    }
+  },
+  "style_anchor": "日系赛璐璐动画风、平涂、清晰描边、高饱和、无真实噪点",
+  "characters": [
+    {
+      "id": "girl",
+      "identity_anchor": "17岁少女，黑色长直发，齐刘海，红色发绳，圆眼",
+      "look": "白衬衫配藏青百褶裙，领口别校牌"
+    }
+  ],
+  "shots": [
+    {
+      "id": "s1",
+      "duration": 3,
+      "framing": "medium",
+      "camera": "static",
+      "subject": "girl",
+      "action": "坐在座位上看窗外，手托下巴",
+      "scene": "教室，前排课桌虚化，窗外樱花树",
+      "light": "逆光，窗外阳光打在头发边缘形成高光",
+      "prompt": "日系赛璐璐动画风、平涂、清晰描边、高饱和、无真实噪点。中景，固定机位，17岁少女黑色长直发齐刘海红色发绳，白衬衫藏青百褶裙，坐在教室座位上手托下巴看向窗外，前排课桌虚化，窗外樱花树，逆光，阳光在头发边缘形成高光，室内偏暗。人物结构正常，面部清晰不变形，五官稳定，动作不僵硬，画面稳定不抖动。构图：人物居中偏左，右侧留白给窗。质感：赛璐璐平涂，阴影边缘清晰，无景深模糊，高饱和。嘴唇微动，正在说话。声音：少女轻声说「她又在看窗外」，语气出神；环境音教室杂音；BGM 轻弦乐 -20dB。",
+      "negative": "水印、字幕、文字、二维码、其他品牌logo、手机号、畸形手、多余人物、面部漂移、塑料感",
+      "character_refs": [
+        "girl"
+      ],
+      "line": "她又在看窗外",
+      "voice": "tts_female_warm",
+      "silent": false,
+      "beat": "被吸引：她手托下巴看向窗外的樱花",
+      "start": 0.0,
+      "end": 3.0
+    },
+    {
+      "id": "s2",
+      "duration": 4,
+      "framing": "close_up",
+      "camera": "push_in",
+      "subject": "girl",
+      "action": "眼睛睁大，嘴微张，眉毛上挑",
+      "scene": "同一教室座位",
+      "light": "逆光，侧脸有轮廓光",
+      "prompt": "接上一镜：她手托下巴，目光落在窗外，脸朝右。同一少女，眼睛睁大，嘴微张，眉毛上挑。表情：惊讶，嘴唇微动，正在说话。场景：同一教室座位，背景黑板虚化。光线：逆光，侧脸有轮廓光。镜头：近景，缓慢推近，等效50mm。构图：面部居中偏上，左侧留白给窗。质感：赛璐璐平涂，描边清晰，高光锐利，高饱和。整体保持：日系赛璐璐动画风、平涂、清晰描边、高饱和、无真实噪点。约束：人物结构正常，面部清晰不变形，五官稳定，比例自然，动作不僵硬，画面稳定不抖动。声音：少女说「这一次，她站起来了」，语气坚定；环境音椅子轻响；BGM 轻弦乐 -18dB。",
+      "negative": "水印、字幕、文字、二维码、其他品牌logo、手机号、畸形手、多余人物、面部漂移、塑料感",
+      "character_refs": [
+        "girl"
+      ],
+      "line": "这一次，她站起来了",
+      "voice": "tts_female_warm",
+      "silent": false,
+      "beat": "动心：她眼睛睁大，身体前倾",
+      "start": 3.0,
+      "end": 7.0
+    },
+    {
+      "id": "s3",
+      "duration": 2,
+      "framing": "medium",
+      "camera": "pull_out",
+      "subject": "girl",
+      "action": "从座位站起，双手撑桌，身体前倾",
+      "scene": "同一教室，窗外樱花",
+      "light": "逆光，窗光铺满脸部",
+      "prompt": "接上一镜：她眼睛睁大，嘴微张，身体前倾准备起身。同一少女，从座位站起，双手撑桌，身体前倾。表情：坚定，嘴唇微动，正在说话。场景：同一教室，窗外樱花。光线：逆光，窗光铺满脸部。镜头：中景，缓慢拉远，等效35mm。构图：人物居中，右侧留白给窗户。质感：赛璐璐平涂，阴影边缘清晰，高饱和。整体保持：日系赛璐璐动画风、平涂、清晰描边、高饱和、无真实噪点。约束：人物结构正常，面部清晰不变形，五官稳定，比例自然，动作不僵硬，画面稳定不抖动。",
+      "negative": "水印、字幕、文字、二维码、其他品牌logo、手机号、畸形手、多余人物、面部漂移、塑料感",
+      "character_refs": [
+        "girl"
+      ],
+      "line": "——",
+      "voice": "tts_female_warm",
+      "silent": true,
+      "beat": "决定：她从座位站起来",
+      "start": 7.0,
+      "end": 9.0
+    }
+  ],
+  "handoffs": [
+    {
+      "from": "s1",
+      "to": "s2",
+      "mode": "continuous",
+      "end_state": "手托下巴，目光落在窗外，脸朝右",
+      "next_start_state": "手仍在下巴，目光转向窗外右侧，脸朝右",
+      "match_on": [
+        "gaze",
+        "hand_position",
+        "screen_direction",
+        "lighting",
+        "wardrobe"
+      ],
+      "tail_frame": "media/s1-tail.png",
+      "head_frame": "media/s2-head.png",
+      "trim_out": 0.2,
+      "trim_in": 0.2
+    },
+    {
+      "from": "s2",
+      "to": "s3",
+      "mode": "continuous",
+      "end_state": "眼睛睁大，嘴微张，身体前倾准备起身",
+      "next_start_state": "身体前倾，双手撑在桌面，准备站起",
+      "match_on": [
+        "gaze",
+        "hand_position",
+        "lighting",
+        "wardrobe"
+      ],
+      "tail_frame": "media/s2-tail.png",
+      "head_frame": "media/s3-head.png",
+      "trim_out": 0.2,
+      "trim_in": 0.2
+    }
+  ],
+  "ending": {
+    "type": "freeze",
+    "end_state": "站定的少女侧影定格，窗外樱花瓣飘落，画面停 1.5 秒"
+  }
+}

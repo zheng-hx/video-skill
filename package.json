@@ -1,0 +1,43 @@
+{
+  "name": "video-design-skills",
+  "version": "1.0.5",
+  "private": true,
+  "author": "zhenghx",
+  "description": "自媒体 / 直播领域技能包：文案 + 视频生成、主播招募、领域路由。零依赖，有工具给成品，没工具给制作包。",
+  "license": "MIT",
+  "files": [
+    "skills/",
+    "evals/",
+    "scripts/",
+    "docs/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "!**/__pycache__/",
+    "!**/*.pyc"
+  ],
+  "keywords": [
+    "agent-skills",
+    "continuity",
+    "copywriting",
+    "live-streaming",
+    "recruit",
+    "short-video",
+    "skills",
+    "storyboard",
+    "video-prompt"
+  ],
+  "scripts": {
+    "check": "python3 scripts/validate-package.py",
+    "check-evals": "python3 scripts/check-evals.py",
+    "run-evals": "python3 scripts/run-evals.py --all",
+    "check-triggers": "python3 scripts/check-triggers.py",
+    "check:all": "npm run check && npm run check-evals && npm run check-triggers && npm run check-storyboard && npm run check-copy && npm run run-evals",
+    "list-skills": "ls -1 skills",
+    "check-storyboard": "python3 skills/video-design-skills/capabilities/video-studio/scripts/check-storyboard.py --sample",
+    "render": "python3 skills/video-design-skills/scripts/render-package.py",
+    "reconcile": "python3 skills/video-design-skills/scripts/reconcile-skills.py",
+    "check-copy": "python3 skills/video-design-skills/capabilities/copy-video-studio/scripts/check-copy.py --self-test"
+  },
+  "packageManager": "npm@10.9.4"
+}

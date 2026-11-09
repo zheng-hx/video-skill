@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""check-copy.py — 文案的违规词与限流词扫描。
+
+只查词，不判语义。「违规」= 法律/平台明令禁止；「限流」= 不违法但平台不推。
+两类都要过，但处理方式不同：违规要删，限流要换说法。
+
+用法：
+    python3 scripts/check-copy.py 文案.txt
+    echo "招主播，保底6000" | python3 scripts/check-copy.py -
+    python3 scripts/check-copy.py --self-test
+
+退出码：0 = 干净，1 = 命中，3 = 用法错误
+"""
+from __future__ import annotations
+
+import pathlib
+import re
+import sys
+
+SNAPSHOT = pathlib.Path(__file__).resolve().parents[1] / "assets" / "rules-snapshot.md"
+
+# 违规：法律或平台明文禁止，出现就要改
+ILLEGAL = {
+    "绝对化用语": ["最好", "第一品牌", "国家级", "世界级", "最高级", "最佳", "最优",
+                   "最强", "最大", "顶级", "唯一", "独家", "100%", "百分百", "永久"],
+    "医疗功效": ["根治", "治疗", "祛斑", "药妆", "医学护肤", "药效"],
+    "金融承诺": ["稳赚", "保本", "保收益", "无风险", "日入过万"],
+}
+
+# 限流：不违法，但平台会压流量
+THROTTLED = {
+    "招工用工": ["招聘", "招人", "底薪", "保底", "月入", "包吃住", "薪资面议", "提成", "五险一金"],
+    "站外导流": ["加微信", "加v", "加V", "vx", "VX", "二维码", "留电话", "加我好友"],
+    "诱导互动": ["点关注抽奖", "不转不是", "领红包", "点赞抽"],
+    "夸大收益": ["轻松月入", "躺赚", "财富自由"],
+}
+
+SELF_TEST = "招主播，保底 6000，月入过万，全网最好，加微信详聊。"
+
+
+def _block_words(text: str, title: str) -> list[str]:
+    m = re.search(rf"#+\s*{re.escape(title)}.*?```(?:text)?\n(.*?)\n```", text, re.S)
+    if not m:
+        return []
+    return [w.strip() for w in m.group(1).splitlines() if w.strip()]
+
+
+def load_snapshot_words() -> tuple[list[str], list[str]]:
+    """从规则快照读词表——快照是单一事实源。"""
+    if not SNAPSHOT.is_file():
+        return [], []
+    text = SNAPSHOT.read_text(encoding="utf-8", errors="ignore")
+    return _block_words(text, "当前红线词"), _block_words(text, "当前限流词")
+
+
+def scan(text: str) -> list[tuple[str, str, str]]:
+    snap_illegal, snap_throttled = load_snapshot_words()
+    hits: list[tuple[str, str, str]] = []
+    if snap_illegal:
+        for w in snap_illegal:
+            if w in text:
+                hits.append(("违规", "快照·红线", w))
+    else:
+        for group, words in ILLEGAL.items():
+            for w in words:
+                if w in text:
+                    hits.append(("违规", group, w))
+    if snap_throttled:
+        for w in snap_throttled:
+            if w in text:
+                hits.append(("限流", "快照·限流", w))
+    else:
+        for group, words in THROTTLED.items():
+            for w in words:
+                if w in text:
+                    hits.append(("限流", group, w))
+    return hits
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if not args:
+        print("用法：check-copy.py <文件|-> [--self-test]")
+        return 3
+    if args[0] == "--self-test":
+        text = SELF_TEST
+    elif args[0] == "-":
+        text = sys.stdin.read()
+    else:
+        p = pathlib.Path(args[0])
+        if not p.is_file():
+            print(f"找不到文件：{p}")
+            return 3
+        text = p.read_text(encoding="utf-8", errors="ignore")
+
+    hits = scan(text)
+    if not hits:
+        print("[PASS] 没命中违规词或限流词")
+        return 0
+
+    for kind, group, word in hits:
+        print(f"[{kind}] {group}: {word}")
+
+    illegal = sum(1 for k, _, _ in hits if k == "违规")
+    throttled = len(hits) - illegal
+    print(f"\n违规 {illegal} 处，限流 {throttled} 处")
+    print("违规要删；限流要换说法（见 compliance.md §5.5）")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
