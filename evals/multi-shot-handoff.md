@@ -34,6 +34,7 @@
 
 - [ ] `[机器]` 没有一次抛出三个以上问题
 - [ ] `[人判]` 没有把 30 秒硬压成一条
+- [ ] `[人判]` 故事和提示词都先给用户看，用户明确说「可以」之后才出现生成选项
 
 ### 反例（出现即失败）
 
@@ -48,13 +49,61 @@
 ```json
 {
   "checks": [
-    {"file": "*.md", "match": ["分镜|镜头 s[0-9]|段"]},
-    {"file": "*.md", "match": ["handoff|衔接"]},
-    {"file": "*.md", "match": ["ending|落版|定格|CTA"]},
-    {"file": "*.md", "match": ["continuous|match_cut|hard_cut|fade"]},
-    {"file": "storyboard.md", "match": ["全局保持"]},
-    {"file": "storyboard.md", "match": ["接上一镜"]},
-    {"file": "*.md", "not_match": ["保持连续", "延续上一镜"]}
+    {
+      "file": "*.md",
+      "match": [
+        "分镜|镜头 s[0-9]|段"
+      ]
+    },
+    {
+      "file": "*.md",
+      "match": [
+        "handoff|衔接"
+      ]
+    },
+    {
+      "file": "*.md",
+      "match": [
+        "ending|落版|定格|CTA"
+      ]
+    },
+    {
+      "file": "*.md",
+      "match": [
+        "continuous|match_cut|hard_cut|fade"
+      ]
+    },
+    {
+      "file": "storyboard.md",
+      "match": [
+        "全局保持"
+      ]
+    },
+    {
+      "file": "storyboard.md",
+      "match": [
+        "接上一镜"
+      ]
+    },
+    {
+      "file": "*.md",
+      "not_match": [
+        "保持连续",
+        "延续上一镜"
+      ]
+    },
+    {
+      "file": "*.md",
+      "match": [
+        "BGM|配乐|音乐|non_diegetic"
+      ]
+    },
+    {
+      "file": "*.md",
+      "match": [
+        "环境音|底噪|音效"
+      ]
+    }
   ]
 }
 ```

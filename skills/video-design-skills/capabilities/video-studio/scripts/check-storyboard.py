@@ -45,6 +45,9 @@ RED_LINE_NEG = ["二维码", "logo", "水印"]
 DANGER_PROMPT = ["伤口", "血迹", "前后对比", "裸露", "低胸", "床戏"]
 # 授权表必填字段
 AUTH_FIELDS = ["real_person", "minor", "brand_logo", "medical_claim"]
+# 声音三件套：台词（或 silent_reason）+ 环境音 + 配乐（或 no_music_reason）
+SOUND_WORDS = ["声音", "音效", "环境音", "底噪"]
+MUSIC_WORDS = ["BGM", "配乐", "音乐", "non_diegetic"]
 # 每一镜都要推进剧情
 BEAT_REQUIRED = True
 # 后续镜必须有「接上一镜」衔接
@@ -115,6 +118,16 @@ def check(data: dict) -> list[str]:
     except (TypeError, ValueError):
         target = 0.0
         problems.append("meta.duration 不是数字")
+
+    review = meta.get("review")
+    if not isinstance(review, dict):
+        problems.append("meta.review 缺失：故事和提示词都得先给用户看，过了再置 true")
+    else:
+        for key, label in (("story_approved", "故事"), ("prompts_approved", "提示词")):
+            if review.get(key) is not True:
+                problems.append(
+                    f"meta.review.{key} 不是 true —— {label}还没给用户看、或用户还没说「可以」；先回去让他审"
+                )
 
     auth = meta.get("authorization")
     if not isinstance(auth, dict):
@@ -275,6 +288,14 @@ def check(data: dict) -> list[str]:
             problems.append(
                 f"{where}: 有台词，但画面没写「在说话」——生成出来人不会张嘴，后配音也对不上"
             )
+
+        # ===== 声音三件套 =====
+        if not has_any(prompt, SOUND_WORDS):
+            problems.append(f"{where}: prompt 里没有「声音」段——台词 / 环境音 / 配乐都得写")
+        if not has_any(prompt, MUSIC_WORDS) and not (s.get("no_music_reason") or "").strip():
+            problems.append(f"{where}: 没写配乐（BGM / 配乐 / 音乐）；真不要音乐就写 no_music_reason")
+        if silent and not (s.get("silent_reason") or "").strip():
+            problems.append(f"{where}: 标了 silent 但没写 silent_reason——为什么这一镜没台词？")
 
         # ===== 负向词 / 角色引用 =====
 
