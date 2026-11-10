@@ -2,7 +2,7 @@
 name: video-design-skills
 slug: video-design-skills
 displayName: 自媒体 / 直播技能包（唯一入口）
-version: 2.0.0
+version: 2.0.1
 description: 自媒体 / 直播技能包的唯一入口：初始化时装出文案、视频两个技能，注册到本机 AI 工具目录；更新 / 诊断也走这里。当用户说「初始化视频技能 / 安装自媒体技能 / 技能没生效 / 更新视频技能」时使用。路由逻辑内置，不再独立成技能。
 ---
 

@@ -1,6 +1,6 @@
 # 变更记录
 
-## video-studio 0.5.1 / copy-video-studio 0.3.1 — 2026-11-10
+## video-design-skills 2.0.1（video-studio 0.5.1 / copy-video-studio 0.3.1）— 2026-11-10
 
 把「招主播」真实用例的返工教训固化进门禁和参考文档，防止再产出「说得漂亮但没人看」的东西：
 
