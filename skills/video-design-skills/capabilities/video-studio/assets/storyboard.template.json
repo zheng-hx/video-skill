@@ -12,8 +12,9 @@
       "medical_claim": "none"
     },
     "review": {
-      "story_approved": true,
-      "prompts_approved": true
+      "story_approved": false,
+      "prompts_approved": false,
+      "_note": "复制模板后：故事给用户看过再置 story_approved=true；提示词过审再置 prompts_approved=true。不许提前置 true，check-storyboard.py 会查。"
     }
   },
   "style_anchor": "暖调、浅景深、手持微晃、低饱和、真实生活感",

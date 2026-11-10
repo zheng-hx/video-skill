@@ -9,10 +9,14 @@ v2.0 更新（2026-11-10）：配合共享/独有字段分层。
   - 后续镜：必须包含「全局保持」行（重申共享锚点）+「接上一镜」行（衔接动作）
   - 旧版要求每镜都完整风格锚 → 改为后续镜只查「全局保持」行里有就行
   - 旧版检查后续镜开头不能和上一镜重复 → 改为检查「全局保持」行之后的独有内容
+  - 审核：meta.review.story_approved / prompts_approved 必须为 true
+  - 声音：每镜「声音」段 + 配乐（或 no_music_reason）；silent 必须写 silent_reason
+  - 全片无台词：必须写 meta.no_dialogue_reason
 
 用法：
-    python3 scripts/check-storyboard.py storyboard.json
-    python3 scripts/check-storyboard.py --sample   # 校验自带模板
+    python3 scripts/check-storyboard.py storyboard.json   # 完整门禁（含审核 / 声音）
+    python3 scripts/check-storyboard.py --sample          # 只验模板结构，跳过 review 门禁
+    python3 scripts/check-storyboard.py --self-test       # 验证门禁本身
 
 退出码：0 = 通过，1 = 有问题，3 = 用法错误
 """
@@ -97,7 +101,7 @@ def strip_global_hold(prompt: str) -> str:
     )
 
 
-def check(data: dict) -> list[str]:
+def check(data: dict, require_review: bool = True) -> list[str]:
     problems: list[str] = []
 
     meta = data.get("meta")
@@ -120,7 +124,9 @@ def check(data: dict) -> list[str]:
         problems.append("meta.duration 不是数字")
 
     review = meta.get("review")
-    if not isinstance(review, dict):
+    if not require_review:
+        pass
+    elif not isinstance(review, dict):
         problems.append("meta.review 缺失：故事和提示词都得先给用户看，过了再置 true")
     else:
         for key, label in (("story_approved", "故事"), ("prompts_approved", "提示词")):
@@ -292,7 +298,9 @@ def check(data: dict) -> list[str]:
         # ===== 声音三件套 =====
         if not has_any(prompt, SOUND_WORDS):
             problems.append(f"{where}: prompt 里没有「声音」段——台词 / 环境音 / 配乐都得写")
-        if not has_any(prompt, MUSIC_WORDS) and not (s.get("no_music_reason") or "").strip():
+        says_no_music = any(w in prompt for w in ("无配乐", "无音乐", "不要配乐", "不要音乐", "不加配乐"))
+        has_music = has_any(prompt, MUSIC_WORDS) and not says_no_music
+        if not has_music and not (s.get("no_music_reason") or "").strip():
             problems.append(f"{where}: 没写配乐（BGM / 配乐 / 音乐）；真不要音乐就写 no_music_reason")
         if silent and not (s.get("silent_reason") or "").strip():
             problems.append(f"{where}: 标了 silent 但没写 silent_reason——为什么这一镜没台词？")
@@ -346,6 +354,15 @@ def check(data: dict) -> list[str]:
     elif handoffs:
         problems.append("单条模式不需要 handoffs，删掉或改成 multi")
 
+    if shots and all(
+        bool(s.get("silent")) or not (s.get("line") or "").strip() for s in shots
+    ):
+        if not (meta.get("no_dialogue_reason") or "").strip():
+            problems.append(
+                "全片没有一个镜头有台词——故事里真没人说话就写 meta.no_dialogue_reason，"
+                "否则回去把 story.md 里的台词补成 line（常见错误：把「她说了两句」当动作）"
+            )
+
     ending = data.get("ending")
     if not isinstance(ending, dict):
         problems.append("缺少 ending（收尾设计）")
@@ -363,9 +380,37 @@ def check(data: dict) -> list[str]:
     return problems
 
 
+def self_test() -> int:
+    """验证门禁本身：模板结构合法；未审核的分镜必须被拦住。"""
+    data = load(SAMPLE)
+    baseline = check(data, require_review=False)
+    if baseline:
+        print("[SELF-TEST FAIL] 模板结构本身不过门禁：")
+        for p in baseline:
+            print(f"  - {p}")
+        return 1
+
+    data.setdefault("meta", {})["review"] = {"story_approved": False, "prompts_approved": False}
+    problems = check(data, require_review=True)
+    review_hits = [p for p in problems if "meta.review" in p]
+    others = [p for p in problems if "meta.review" not in p]
+    if others or len(review_hits) != 2:
+        print("[SELF-TEST FAIL] 未审核的分镜应该只报 2 条 review 问题：")
+        for p in problems:
+            print(f"  - {p}")
+        return 1
+
+    print("[SELF-TEST PASS] 模板结构合法；未审核的分镜被拦住（2 条 review 问题）")
+    return 0
+
+
 def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("-")]
-    if "--sample" in sys.argv[1:] or not args:
+    argv = sys.argv[1:]
+    if "--self-test" in argv:
+        return self_test()
+    require_review = "--sample" not in argv
+    args = [a for a in argv if not a.startswith("-")]
+    if "--sample" in argv or not args:
         path = SAMPLE
     else:
         path = pathlib.Path(args[0])
@@ -378,7 +423,9 @@ def main() -> int:
         print(f"JSON 不合法：{e}")
         return 3
 
-    problems = check(data)
+    if not require_review:
+        print("[INFO] --sample：只验结构，跳过 review 门禁")
+    problems = check(data, require_review=require_review)
     if problems:
         for p in problems:
             print(f"[FAIL] {p}")

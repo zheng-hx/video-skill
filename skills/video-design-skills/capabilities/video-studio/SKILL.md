@@ -384,6 +384,11 @@ Stage 3b 提示词出完了，**不是终点**——先用参考图 + 提示词�
 - 非最后镜都有 handoff，`match_on` ≥ 2，`end_state` / `next_start_state` 是可见事实、不含空话
 - 角色引用都能在角色卡里找到
 
+**审核与声音**
+- `meta.review.story_approved` / `prompts_approved` 必须为 `true`——没给用户看过就不许置 true
+- 每镜有「声音」段 + 配乐（或 `no_music_reason`）；`silent` 镜有 `silent_reason`
+- 全片都没有台词时，必须有 `meta.no_dialogue_reason`——写不出来就是台词漏了
+
 **总时长与收尾**
 - 总时长与目标偏差 ≤ 1 秒
 - 最后一镜有收尾（定格 / 落版 / CTA），`ending.end_state` 是可见画面

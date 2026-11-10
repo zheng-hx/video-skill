@@ -34,7 +34,7 @@
     "check-triggers": "python3 scripts/check-triggers.py",
     "check:all": "npm run check && npm run check-evals && npm run check-triggers && npm run check-storyboard && npm run check-skills && npm run check-copy && npm run run-evals",
     "list-skills": "ls -1 skills",
-    "check-storyboard": "python3 skills/video-design-skills/capabilities/video-studio/scripts/check-storyboard.py --sample",
+    "check-storyboard": "python3 skills/video-design-skills/capabilities/video-studio/scripts/check-storyboard.py --sample && python3 skills/video-design-skills/capabilities/video-studio/scripts/check-storyboard.py --self-test",
     "render": "python3 skills/video-design-skills/scripts/render-package.py",
     "reconcile": "python3 skills/video-design-skills/scripts/reconcile-skills.py",
     "check-copy": "python3 skills/video-design-skills/capabilities/copy-video-studio/scripts/check-copy.py --self-test",
