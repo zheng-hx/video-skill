@@ -484,7 +484,8 @@ Shot 3: 00:08.000 – 00:12.000
 分镜表给人看，`storyboard.json` 给门禁脚本看。两份内容必须一致。
 
 - **字段定义**以 `assets/storyboard.template.json` 为准（含 `meta` / 角色 / `shots` / `handoffs` / `ending`），别另造结构。
-- `meta.review.story_approved` / `prompts_approved` 是**审核记录**，模板里默认 `false`：故事和提示词各给用户看过、拿到「可以」才置 `true`。提前置 `true` 等于伪造审核，门禁会查但查不出真假，只能靠你不作弊。
+- `meta.review.story_approved` / `prompts_approved` 是**审核记录**，模板里默认 `false`：故事和提示词各给用户看过、拿到「可以」才置 `true`。
+- 要**真强制**就用严格模式：用户本人在终端跑 `scripts/approve.py`，会写入 `content_hash`（覆盖所有提示词）+ `approved_by: user-tty`；`check-storyboard.py --strict` 验这两个字段，审批后改任何一句都会判为作废。
 - 每镜的 `silent` 必须配 `silent_reason`；`no_music_reason` 用于「这一条真不要配乐」。
 - **全片没有一个镜头有台词**时，必须写 `meta.no_dialogue_reason`（纯视觉片）。写不出来，说明台词漏了。
 - `shots[].start` / `end` / `duration` 三条时间约束见本文 §9。

@@ -14,18 +14,23 @@ v2.0 更新（2026-11-10）：配合共享/独有字段分层。
   - 全片无台词：必须写 meta.no_dialogue_reason
 
 用法：
-    python3 scripts/check-storyboard.py storyboard.json   # 完整门禁（含审核 / 声音）
-    python3 scripts/check-storyboard.py --sample          # 只验模板结构，跳过 review 门禁
-    python3 scripts/check-storyboard.py --self-test       # 验证门禁本身
+    python3 scripts/check-storyboard.py storyboard.json            # 完整门禁（含审核 / 声音）
+    python3 scripts/check-storyboard.py storyboard.json --strict   # 追加：审批必须是人跑的 approve.py
+    python3 scripts/check-storyboard.py --sample                   # 只验模板结构，跳过 review 门禁
+    python3 scripts/check-storyboard.py --self-test                # 验证门禁本身
 
 退出码：0 = 通过，1 = 有问题，3 = 用法错误
 """
 from __future__ import annotations
 
+import copy
 import json
 import re
 import pathlib
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _review import content_hash  # noqa: E402
 
 MODES = {"single", "multi"}
 STYLES = {"realistic", "anime", "3d", "illustration", "mixed"}
@@ -101,7 +106,7 @@ def strip_global_hold(prompt: str) -> str:
     )
 
 
-def check(data: dict, require_review: bool = True) -> list[str]:
+def check(data: dict, require_review: bool = True, strict: bool = False) -> list[str]:
     problems: list[str] = []
 
     meta = data.get("meta")
@@ -133,6 +138,23 @@ def check(data: dict, require_review: bool = True) -> list[str]:
             if review.get(key) is not True:
                 problems.append(
                     f"meta.review.{key} 不是 true —— {label}还没给用户看、或用户还没说「可以」；先回去让他审"
+                )
+        stored = review.get("content_hash")
+        if stored:
+            if stored != content_hash(data):
+                problems.append(
+                    "审批后内容被改过（content_hash 对不上）——这次审批已作废，"
+                    "请用户本人重跑 scripts/approve.py"
+                )
+        if strict:
+            if not stored:
+                problems.append(
+                    "--strict 模式要求 meta.review.content_hash —— 必须由用户本人在终端跑 "
+                    "scripts/approve.py，模型自己写的 true 不算"
+                )
+            elif review.get("approved_by") != "user-tty":
+                problems.append(
+                    f"--strict 模式要求 meta.review.approved_by = user-tty，当前是 {review.get('approved_by')!r}"
                 )
 
     auth = meta.get("authorization")
@@ -381,26 +403,43 @@ def check(data: dict, require_review: bool = True) -> list[str]:
 
 
 def self_test() -> int:
-    """验证门禁本身：模板结构合法；未审核的分镜必须被拦住。"""
+    """验证门禁本身：结构合法、未审核被拦、伪造 true 在 strict 下被拦、审批后改动失效。"""
+    def fail(title: str, problems: list[str]) -> int:
+        print(f"[SELF-TEST FAIL] {title}")
+        for item in problems:
+            print(f"  - {item}")
+        return 1
+
     data = load(SAMPLE)
+
     baseline = check(data, require_review=False)
     if baseline:
-        print("[SELF-TEST FAIL] 模板结构本身不过门禁：")
-        for p in baseline:
-            print(f"  - {p}")
-        return 1
+        return fail("模板结构本身不过门禁：", baseline)
 
-    data.setdefault("meta", {})["review"] = {"story_approved": False, "prompts_approved": False}
-    problems = check(data, require_review=True)
-    review_hits = [p for p in problems if "meta.review" in p]
-    others = [p for p in problems if "meta.review" not in p]
-    if others or len(review_hits) != 2:
-        print("[SELF-TEST FAIL] 未审核的分镜应该只报 2 条 review 问题：")
-        for p in problems:
-            print(f"  - {p}")
-        return 1
+    forged = copy.deepcopy(data)
+    forged["meta"]["review"] = {"story_approved": True, "prompts_approved": True}
+    if check(forged, require_review=True):
+        return fail("默认模式应向后兼容旧的 true 写法：", check(forged, require_review=True))
 
-    print("[SELF-TEST PASS] 模板结构合法；未审核的分镜被拦住（2 条 review 问题）")
+    strict_problems = check(forged, require_review=True, strict=True)
+    if len(strict_problems) != 1 or "content_hash" not in strict_problems[0]:
+        return fail("strict 模式应因缺 content_hash 只报 1 条：", strict_problems)
+
+    approved = copy.deepcopy(forged)
+    approved["meta"]["review"].update({
+        "content_hash": content_hash(approved),
+        "approved_by": "user-tty",
+    })
+    if check(approved, require_review=True, strict=True):
+        return fail("带指纹的审批应当通过：", check(approved, require_review=True, strict=True))
+
+    tampered = copy.deepcopy(approved)
+    tampered["shots"][0]["prompt"] += "（偷偷改了一句）"
+    tampered_problems = check(tampered, require_review=True, strict=True)
+    if len(tampered_problems) != 1 or "content_hash" not in tampered_problems[0]:
+        return fail("审批后改内容应当报指纹不符：", tampered_problems)
+
+    print("[SELF-TEST PASS] 结构合法 / 未审核被拦 / 伪造 true 在 strict 下被拦 / 审批后改动失效")
     return 0
 
 
@@ -409,6 +448,7 @@ def main() -> int:
     if "--self-test" in argv:
         return self_test()
     require_review = "--sample" not in argv
+    strict = "--strict" in argv
     args = [a for a in argv if not a.startswith("-")]
     if "--sample" in argv or not args:
         path = SAMPLE
@@ -425,7 +465,7 @@ def main() -> int:
 
     if not require_review:
         print("[INFO] --sample：只验结构，跳过 review 门禁")
-    problems = check(data, require_review=require_review)
+    problems = check(data, require_review=require_review, strict=strict)
     if problems:
         for p in problems:
             print(f"[FAIL] {p}")

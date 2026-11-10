@@ -128,6 +128,23 @@ draft（产出）→ 自审（自动过检查清单）→ 用户审核 → appro
 - 没过审核之前，**不许出现生成选项 / 操作卡 / 「复制这段丢进即梦」**。
 - 过了审核才把 `meta.review.story_approved` / `meta.review.prompts_approved` 置 `true`——`check-storyboard.py` 会查这两个字段，没置就红。
 
+**两种强度，按需要选**：
+
+| 模式 | 怎么跑 | 挡得住什么 | 挡不住什么 |
+|---|---|---|---|
+| 默认（防遗忘） | `check-storyboard.py storyboard.json` | 忘了写 review 就红；跑不了结构/声音门禁 | 模型自己把 true 填上 |
+| **严格（真强制）** | `--strict` + **用户本人**在终端跑 `scripts/approve.py` | 模型跑不了（没有 TTY）；审批后改一个字，指纹就对不上，审批自动作废 | 模型主动去读指纹算法硬造记录（明显作弊） |
+
+严格模式怎么走（交付给客户 / 要留痕的项目建议开）：
+
+1. 技能把 `storyboard.json` 落盘，把路径和预览给用户；
+2. **用户自己**在终端跑：`python3 scripts/approve.py --file <storyboard.json>`，看预览，输「可以」；
+3. 技能再跑 `check-storyboard.py --file <storyboard.json> --strict`；
+4. 红就是红，绿就是绿——**不许自己往 review 里写 `content_hash`**。
+
+> 为什么这样就强制了：AI 的 shell 没有 TTY，`input()` 拿不到人，`approve.py` 会直接退出；
+> 而审批记录里的 `content_hash` 覆盖所有提示词，审批后改任何一句都会对不上。
+
 ---
 
 ### Stage 1 故事：自审清单 + 红线
@@ -420,4 +437,6 @@ Stage 3b 提示词出完了，**不是终点**——先用参考图 + 提示词�
 - `assets/howto-card.md`：傻瓜操作卡模板，给不懂技术的用户用
 - `assets/storyboard.template.json`：分镜数据源模板（realistic，3 镜）
 - `assets/storyboard.anime.json`：同结构漫剧示例（anime，3 镜，能过门禁）
-- `scripts/check-storyboard.py`：衔接与完整性门禁
+- `scripts/check-storyboard.py`：衔接 / 声音 / 审核门禁（`--strict` 要求真人审批）
+- `scripts/approve.py`：**用户本人**在终端确认故事 / 提示词，写入带内容指纹的审批记录
+- `scripts/_review.py`：审批指纹算法（上面两个脚本共用）
