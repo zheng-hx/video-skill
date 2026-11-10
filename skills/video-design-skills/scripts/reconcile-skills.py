@@ -29,6 +29,17 @@ def load_targets() -> list[dict]:
     return json.loads(TOOL_DIRS.read_text(encoding="utf-8"))["targets"]
 
 
+def default_workbench() -> Path:
+    """工作台位置以 tool-dirs.json 的 workbench 为准，配置缺失才回退默认值。"""
+    try:
+        raw = json.loads(TOOL_DIRS.read_text(encoding="utf-8")).get("workbench", "")
+        if raw:
+            return Path(os.path.expanduser(raw))
+    except (json.JSONDecodeError, OSError):
+        pass
+    return DEFAULT_WB
+
+
 def link(target: Path, src: Path, mode: str) -> str:
     if target.is_symlink() or target.is_file():
         target.unlink()
@@ -48,13 +59,13 @@ def link(target: Path, src: Path, mode: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description="注册技能到 AI 工具目录")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--workdir", default=str(DEFAULT_WB), help="工作台目录")
+    ap.add_argument("--workdir", default="", help="工作台目录（默认读 tool-dirs.json 的 workbench）")
     ap.add_argument("--tool", default="", help="只装到指定工具（label 或目录）")
     ap.add_argument("--all", action="store_true", help="装到所有探测到的工具")
     ap.add_argument("--list", action="store_true", help="只探测，不安装")
     args = ap.parse_args()
 
-    wb = Path(os.path.expanduser(args.workdir))
+    wb = Path(os.path.expanduser(args.workdir)) if args.workdir else default_workbench()
     skills_src = wb / "skills"
     if not skills_src.is_dir():
         print(f"工作台还没渲染：{skills_src}")
@@ -93,7 +104,6 @@ def main() -> int:
     else:
         chosen = available[:1]
 
-    found = 0
     conflicts: list[str] = []
     for t in chosen:
         label = t["label"]
@@ -116,8 +126,8 @@ def main() -> int:
             act = link(target, src, t.get("mode", "symlink"))
             print(f"    {src.name}: {act}")
 
-    if found == 0:
-        print("\n没探测到任何 AI 工具的技能目录。")
+    if not chosen:
+        print("\n没探测到任何 AI 工具的技能目录，没有可注册的目标。")
         print("把 SKILL.md 内容贴进你的 AI 工具的系统提示词也能用。")
     elif not args.all and not args.tool:
         others = [t["label"] for t in available[1:]]

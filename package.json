@@ -32,12 +32,13 @@
     "check-evals": "python3 scripts/check-evals.py",
     "run-evals": "python3 scripts/run-evals.py --all",
     "check-triggers": "python3 scripts/check-triggers.py",
-    "check:all": "npm run check && npm run check-evals && npm run check-triggers && npm run check-storyboard && npm run check-copy && npm run run-evals",
+    "check:all": "npm run check && npm run check-evals && npm run check-triggers && npm run check-storyboard && npm run check-skills && npm run check-copy && npm run run-evals",
     "list-skills": "ls -1 skills",
     "check-storyboard": "python3 skills/video-design-skills/capabilities/video-studio/scripts/check-storyboard.py --sample",
     "render": "python3 skills/video-design-skills/scripts/render-package.py",
     "reconcile": "python3 skills/video-design-skills/scripts/reconcile-skills.py",
-    "check-copy": "python3 skills/video-design-skills/capabilities/copy-video-studio/scripts/check-copy.py --self-test"
+    "check-copy": "python3 skills/video-design-skills/capabilities/copy-video-studio/scripts/check-copy.py --self-test",
+    "check-skills": "python3 skills/video-design-skills/capabilities/copy-video-studio/scripts/check-skill.py && python3 skills/video-design-skills/capabilities/video-studio/scripts/check-skill.py"
   },
   "packageManager": "npm@10.9.4"
 }

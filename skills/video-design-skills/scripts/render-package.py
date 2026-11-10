@@ -31,6 +31,19 @@ DEFAULT_WB = Path.home() / ".video-design"
 SKIP = {"__pycache__", ".DS_Store"}
 
 
+def default_workbench() -> Path:
+    """工作台位置以 tool-dirs.json 的 workbench 为准，配置缺失才回退默认值。"""
+    cfg = PKG / "tool-dirs.json"
+    if cfg.is_file():
+        try:
+            raw = json.loads(cfg.read_text(encoding="utf-8")).get("workbench", "")
+            if raw:
+                return Path(os.path.expanduser(raw))
+        except (json.JSONDecodeError, OSError):
+            pass
+    return DEFAULT_WB
+
+
 def package_version() -> str:
     p = PKG / "version.json"
     if p.is_file():
@@ -60,10 +73,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="渲染技能到用户工作台")
     ap.add_argument("--force", action="store_true", help="已存在也覆盖")
     ap.add_argument("--dry-run", action="store_true", help="只报告，不写盘")
-    ap.add_argument("--workdir", default=str(DEFAULT_WB), help="工作台目录")
+    ap.add_argument("--workdir", default="", help="工作台目录（默认读 tool-dirs.json 的 workbench）")
     args = ap.parse_args()
 
-    wb = Path(os.path.expanduser(args.workdir))
+    wb = Path(os.path.expanduser(args.workdir)) if args.workdir else default_workbench()
     skills_dst = wb / "skills"
     ver = package_version()
     manifest_path = wb / "video.json"
@@ -80,14 +93,24 @@ def main() -> int:
     print(f"工作台：{wb}")
     print(f"版本：{ver}")
 
+    # 已装版本：与当前包相同才跳过；不同（升级/降级）就覆盖技能目录，用户的 output/ 不动
+    installed_ver = ""
+    if manifest_path.is_file():
+        try:
+            installed_ver = json.loads(manifest_path.read_text(encoding="utf-8")).get("version", "")
+        except (json.JSONDecodeError, OSError):
+            installed_ver = ""
+    if installed_ver and installed_ver != ver:
+        print(f"已装版本：{installed_ver}（将覆盖为 {ver}）")
+
     if not args.dry_run:
         skills_dst.mkdir(parents=True, exist_ok=True)
 
     actions: dict[str, str] = {}
     for d in dirs:
         dst = skills_dst / d.name
-        if dst.exists() and not args.force:
-            actions[d.name] = "skipped (exists)"
+        if dst.exists() and not args.force and installed_ver == ver:
+            actions[d.name] = "skipped (same version)"
             continue
         actions[d.name] = render_one(d, dst, args.dry_run)
 

@@ -141,6 +141,15 @@ def cmd_search(args) -> int:
             continue
         if args.platform and e.get("platform") != args.platform:
             continue
+        if getattr(args, "q", ""):
+            body = root / "entries" / (e["id"] + ".md")
+            blob = " ".join([
+                e.get("type", ""), e.get("platform", ""), e.get("why", ""),
+                " ".join(e.get("tags", [])),
+                body.read_text(encoding="utf-8", errors="ignore") if body.is_file() else "",
+            ])
+            if args.q.lower() not in blob.lower():
+                continue
         hits.append(e)
     hits.sort(key=lambda e: (hit_count(e), e.get("date", "")), reverse=True)
     hits = hits[: args.limit]
@@ -234,7 +243,8 @@ def main() -> int:
     a.add_argument("--tags", default="")
     a.add_argument("--why", default="")
 
-    s = sub.add_parser("search", help="检索可用条目")
+    s = sub.add_parser("search", help="检索可用条目（可给关键词）")
+    s.add_argument("q", nargs="?", default="", help="关键词，匹配标题 / 正文 / 标签 / 原因")
     s.add_argument("--type", default="")
     s.add_argument("--platform", default="")
     s.add_argument("--limit", type=int, default=3)

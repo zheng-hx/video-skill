@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""live-media-ops 技能自检。
+"""copy-video-studio 技能自检。
 
 用法：
     python3 scripts/check-skill.py            # 检查本技能

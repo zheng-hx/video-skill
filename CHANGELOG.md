@@ -2,6 +2,33 @@
 
 ## 2.0.0 — 2026-11-10
 
+### 文档与包一致性修复（随 2.0.0 一起发）
+
+- **README 重写**：删掉 `live-media-ops` / `live-media-router` 和「四个技能」的说法，改为两个能力；评测数 7 → 10；补 `check-copy` 与 `rules/` 工作台目录。
+- **docs 对齐 v2.0**：`安装与分发.md`（四个→两个技能、补 Trae CN）、`交付形态.md`（4 个 markdown 技能→2、修正 capabilities 路径）、`测试方法.md`（L3 基线 7 条→10 条）、`工作流协议.md`（三段→四段流水线，表里有四行）。
+- **修 `reconcile-skills.py` 计数 bug**：`found` 初始化为 0 后再未累加，导致注册成功也打印「没探测到任何 AI 工具的技能目录」，且「只装了 X」提示永远不执行。改为按 `chosen` 是否为空判断。
+- **修 `check-copy.py --self-test`**：原来它对着含违规词的样本扫描并返回 1，等于自测恒失败，`npm run check:all` 一直是红的。改为真自测：脏样本必须命中违规 + 限流，干净样本不得误报。
+- **评测参考产物对齐黑名单**：`copy-recruit` / `copy-script-file` 正文的「底薪加提成」改为「固定加分成」，不再违反 v2.0 的限流词规则。
+- **修 `render-package.py` 版本判断**：文档写「版本相同跳过、不同覆盖」，代码实际是「目录存在就跳过」。改成读 `video.json` 的已装版本比对——同版本跳过，跨版本自动覆盖技能目录（`output/` 仍不动）。
+- **清残留**：`ecosystem.md` / `check-skill.py` 里的旧技能名、`copy-video-studio/SKILL.md` 重复的 `check-copy.py` 引用行。
+- `dist/` 补 2.0.0 分发包；`0.4.3` / `1.0.0` / `1.0.1` 三个旧包保留作历史。
+
+### 审计修复（2026-11-10）
+
+- **漫剧示例恢复合格**：`assets/storyboard.anime.json` 的 s2/s3 补「全局保持」行，重新过门禁。
+- **工作流协议收进技能**：正文移到 `video-studio/references/workflow-protocol.md`，`docs/工作流协议.md` 改成索引。原来两处引用指向项目根 `docs/`，`render` 不拷 `docs/`，装完必断。
+- **快照与黑名单对齐**：`rules-snapshot.md` 补「月薪 / 工资 / 高薪」；「简历 / 投递 / 入职」明确标为**人工判断项**，不进扫描词表（否则会误伤 §0 要求的「投了三十份简历」这类具体细节）。
+- **补上 v2.0 核心修复的评测**：`multi-shot-handoff` 增加「全局保持 / 接上一镜」断言，参考产物按新格式重写。此前 10 条评测没有任何一条覆盖这个修复。
+- **门禁清单与脚本对齐**：`video-studio/SKILL.md` 门禁节补齐脚本实际在查的项（授权四字段、时间轴连续、构图/质感/约束层、台词写进 prompt、负向三红线、单镜上限）。
+- **触发词金标集修解析**：`check-triggers.py` 支持「`a` / `b`」双技能单元格，金标集从「15 条」恢复为真实的 16 条。
+- **删掉 `shared/` 的空承诺**（空目录、无实现、未入库）；孤儿文件接线：`no-tools.md`、`brief-template.md`、`storyboard.anime.json`。
+- **`library.py search` 支持关键词**（原来只能按 type / platform 过滤，实际搜不了内容）。
+- **`tool-dirs.json` 的 `workbench` 真正生效**：`render` / `reconcile` 默认值改读它，不再硬编码。
+- **`validate-package.py` 注释与实现对齐**：不再声称会比对 package 与 `_meta.json` 版本（两者本就该不同）。
+- **收紧文案评测**：`copy-recruit` / `copy-script-file` 的 `not_match` 补「招聘 / 底薪 / 提成 / 月入」，参考产物去掉「合规招聘 / 目标投递」这类标签。
+- **示例对齐红线**：`docs/示例-深圳择业文案.md` 去掉「一个月能拿一万多」「一个月到底能拿多少」等收入数字与承诺。
+- **技能级自检进 CI**：新增 `npm run check-skills`，`video-studio` 补上 `scripts/check-skill.py`，纳入 `check:all`。
+
 ### 架构重组：四个技能收缩为两个
 
 - 从四个技能（文案 + 视频 + 招募 + 路由）收缩为**两个技能**（文案 + 视频）。

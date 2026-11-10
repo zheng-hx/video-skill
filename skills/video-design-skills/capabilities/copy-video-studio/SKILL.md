@@ -137,6 +137,8 @@ python3 scripts/check-rules.py --platform 抖音
 
 **不许事后扫——骨架生成时就替换掉。** 用户提供的文案原文里有黑名单词，替换前标 `【原词 → 改法】`。
 
+**扫描器只认词表**（`assets/rules-snapshot.md`）。「简历 / 投递 / 入职」**不在词表里**——故事里「投了三十份简历」是必需的具体细节，扫它只会制造误报；它们只在出现在**招人 CTA** 时才换，按上下文人工判断。
+
 ### ② 出文案
 
 **唯一目的：看完的人来联系我们。** 不是"觉得这家公司不错"，是"我想问一句怎么开始"。
@@ -288,6 +290,8 @@ output/<YYYY-MM-DD>-<一句话主题>/script.md
 - `references/library.md`：文案知识库——入库 / 检索 / 规则变更 / 复审
 - `references/rules-refresh.md`：规则自动刷新——什么时候刷、从哪刷、刷完怎么存
 - `references/platform-differences.md`：抖音 / 快手 / 视频号 / 小红书的红线松紧与内容偏好
+- `references/no-tools.md`：零工具降级路线——剪映合成 / 没数字人平台 / 没生视频工具 / 存不了文件
+- `assets/brief-template.md`：视频制作 brief 模板（分镜表 + 包装要求 + 成片自检）
 - `references/host-recruit.md`：主播筛选 / 面试方法论（行业参考，非产出物）
 - `assets/rules-snapshot.md`：当前规则快照（红线词 / 限流词 / 处罚阶梯）
 - `scripts/check-rules.py`：快照新鲜度检查
@@ -297,4 +301,3 @@ output/<YYYY-MM-DD>-<一句话主题>/script.md
 - `assets/`：脚本模板、分镜模板、档案模板
 - `scripts/composite_digital_human.sh`：可选合成助手（需 ffmpeg）
 - `scripts/check-skill.py`：自检
-- `scripts/check-copy.py`：违规词与限流词扫描

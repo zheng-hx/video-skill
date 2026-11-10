@@ -14,7 +14,7 @@
   2) name 与目录名一致；description 不超过 300 字符
   3) SKILL.md 里以反引号引用的 references/ assets/ scripts/ 路径都真实存在
   4) 有 _meta.json 时：slug 与 name 一致、version 存在
-  5) package.json 存在且 version 与各 _meta.json 不冲突
+  5) package.json 存在且有 name / version；各 _meta.json 的 version 只打印供核对（包版本 ≠ 技能版本，属正常）
 
 退出码：0 = 通过，1 = 有问题，3 = 用法错误
 """

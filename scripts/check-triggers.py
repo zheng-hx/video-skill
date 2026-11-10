@@ -20,7 +20,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 TRIGGERS = ROOT / "evals" / "triggers.md"
 
-ROW = re.compile(r"^\|\s*\d+\s*\|([^|]+)\|\s*`([a-z0-9-]+)`\s*\|\s*([^|]+)\|", re.M)
+# 期望技能单元格可能是「`a` / `b`」，所以先取整格再解析反引号里的技能名
+ROW = re.compile(r"^\|\s*\d+\s*\|([^|]+)\|\s*([^|]+?)\s*\|\s*([^|]+)\|", re.M)
+SKILL_IN_CELL = re.compile(r"`([a-z0-9-]+)`")
 QUOTED = re.compile(r"「([^」]+)」")
 
 
@@ -62,18 +64,24 @@ def main() -> int:
 
     missing_skill = 0
     uncovered = 0
-    for _say, skill, kws in rows:
+    for _say, cell, kws in rows:
         say = _say.strip()
-        if skill not in descs:
-            print(f"[FAIL] 技能不存在：`{skill}`（用例：{say}）")
+        names = SKILL_IN_CELL.findall(cell)
+        if not names:
+            print(f"[FAIL] 期望技能列里没写反引号技能名（用例：{say}）")
+            missing_skill += 1
+            continue
+        absent = [n for n in names if n not in descs]
+        if absent:
+            print(f"[FAIL] 技能不存在：`{'` / `'.join(absent)}`（用例：{say}）")
             missing_skill += 1
             continue
         keywords = [k.strip() for k in re.split(r"[/|、]", kws) if k.strip()]
-        if not any(k in descs[skill] for k in keywords):
-            print(f"[FAIL] 覆盖缺口：`{skill}` 的 description 里找不到 {keywords}（用例：{say}）")
+        if not any(k in descs[n] for n in names for k in keywords):
+            print(f"[FAIL] 覆盖缺口：`{'` / `'.join(names)}` 的 description 里找不到 {keywords}（用例：{say}）")
             uncovered += 1
         else:
-            print(f"[PASS] {say[:28]}… → `{skill}`")
+            print(f"[PASS] {say[:28]}… → `{'` / `'.join(names)}`")
 
     print("\n—— 各技能触发短语（人工看有没有抢触发）——")
     for name, desc in descs.items():

@@ -72,11 +72,10 @@ cd <技能所在目录>
 python3 scripts/render-package.py
 ```
 
-它做三件事：
+它做两件事：
 
 1. 把 `capabilities/` 下两个技能复制到 `~/.video-design/skills/`；
-2. 把 `shared/` 里的公共参考分发到需要的技能目录；
-3. 写 `~/.video-design/video.json`（版本、时间、清单）。
+2. 写 `~/.video-design/video.json`（版本、时间、清单）。
 
 已存在且版本相同就跳过；版本不同就覆盖，**不碰用户的产物**（`output/` 目录一律不动）。
 

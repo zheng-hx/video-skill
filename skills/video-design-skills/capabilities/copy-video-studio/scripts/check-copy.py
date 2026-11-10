@@ -7,9 +7,9 @@
 用法：
     python3 scripts/check-copy.py 文案.txt
     echo "招主播，保底6000" | python3 scripts/check-copy.py -
-    python3 scripts/check-copy.py --self-test
+    python3 scripts/check-copy.py --self-test   # 验证扫描器本身，不扫你的文案
 
-退出码：0 = 干净，1 = 命中，3 = 用法错误
+退出码：0 = 干净 / 自测通过，1 = 命中 / 自测失败，3 = 用法错误
 """
 from __future__ import annotations
 
@@ -36,6 +36,7 @@ THROTTLED = {
 }
 
 SELF_TEST = "招主播，保底 6000，月入过万，全网最好，加微信详聊。"
+SELF_TEST_CLEAN = "今天天气不错，我们去公园走走。"
 
 
 def _block_words(text: str, title: str) -> list[str]:
@@ -77,13 +78,41 @@ def scan(text: str) -> list[tuple[str, str, str]]:
     return hits
 
 
+def self_test() -> int:
+    """验证扫描器本身：脏样本该命中，干净样本不该误报。"""
+    hits = scan(SELF_TEST)
+    for kind, group, word in hits:
+        print(f"[命中] {kind} · {group}: {word}")
+
+    illegal = [h for h in hits if h[0] == "违规"]
+    throttled = [h for h in hits if h[0] == "限流"]
+    clean_hits = scan(SELF_TEST_CLEAN)
+
+    problems: list[str] = []
+    if not illegal:
+        problems.append("自测样本含「最好」，却未命中任何违规词")
+    if not throttled:
+        problems.append("自测样本含限流词，却未命中任何限流词")
+    if clean_hits:
+        problems.append("干净样本被误报：" + "、".join(w for _, _, w in clean_hits))
+
+    if problems:
+        print("\n[SELF-TEST FAIL]")
+        for p in problems:
+            print(f"  - {p}")
+        return 1
+
+    print(f"\n[SELF-TEST PASS] 违规 {len(illegal)} 处、限流 {len(throttled)} 处全部命中；干净样本 0 误报")
+    return 0
+
+
 def main() -> int:
     args = sys.argv[1:]
     if not args:
         print("用法：check-copy.py <文件|-> [--self-test]")
         return 3
     if args[0] == "--self-test":
-        text = SELF_TEST
+        return self_test()
     elif args[0] == "-":
         text = sys.stdin.read()
     else:

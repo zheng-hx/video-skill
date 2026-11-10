@@ -25,6 +25,8 @@
 
 - [ ] `[机器]` 没有「保持连续」「同上」「延续上一镜」
 - [ ] `[机器]` handoff 里有 mode（continuous / match_cut / hard_cut / fade）
+- [ ] `[机器]` 后续镜开头有「全局保持」（重申风格锚 / 身份锚点 / 光线）
+- [ ] `[机器]` 后续镜开头有「接上一镜」（写上一镜的结束状态）
 - [ ] `[人判]` 人物服装、站位在每段一致
 - [ ] `[人判]` 最后一段停留 ≥ 1.5 秒
 
@@ -50,6 +52,8 @@
     {"file": "*.md", "match": ["handoff|衔接"]},
     {"file": "*.md", "match": ["ending|落版|定格|CTA"]},
     {"file": "*.md", "match": ["continuous|match_cut|hard_cut|fade"]},
+    {"file": "storyboard.md", "match": ["全局保持"]},
+    {"file": "storyboard.md", "match": ["接上一镜"]},
     {"file": "*.md", "not_match": ["保持连续", "延续上一镜"]}
   ]
 }

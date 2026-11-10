@@ -49,7 +49,7 @@
     {"file": "script.md", "match": ["假设"]},
     {"file": "script.md", "match": ["正文"]},
     {"file": "script.md", "match": ["合规"]},
-    {"file": "script.md", "not_match": ["全网最好", "第一品牌"]}
+    {"file": "script.md", "not_match": ["全网最好", "第一品牌", "招聘", "底薪", "提成", "月入"]}
   ]
 }
 ```
