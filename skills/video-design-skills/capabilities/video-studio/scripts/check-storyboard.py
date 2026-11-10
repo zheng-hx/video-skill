@@ -14,10 +14,14 @@ v2.0 更新（2026-11-10）：配合共享/独有字段分层。
   - 全片无台词：必须写 meta.no_dialogue_reason
 
 用法：
-    python3 scripts/check-storyboard.py storyboard.json            # 完整门禁（含审核 / 声音）
-    python3 scripts/check-storyboard.py storyboard.json --strict   # 追加：审批必须是人跑的 approve.py
-    python3 scripts/check-storyboard.py --sample                   # 只验模板结构，跳过 review 门禁
-    python3 scripts/check-storyboard.py --self-test                # 验证门禁本身
+    python3 scripts/check-storyboard.py storyboard.json              # 默认：强制人工审批（要 content_hash）
+    python3 scripts/check-storyboard.py storyboard.json --content-only # 用户审核前自审：只验内容
+    python3 scripts/check-storyboard.py storyboard.json --no-strict  # 旧产物过渡：只认 true，不认指纹
+    python3 scripts/check-storyboard.py --sample                     # 只验模板结构
+    python3 scripts/check-storyboard.py --self-test                  # 验证门禁本身
+
+台词对账：如果 storyboard.json 同目录有 story.md，会自动读它反查台词——
+故事里有引号台词 / 口播 / 对白，分镜却一句 line 都没有，直接判台词漏了。
 
 退出码：0 = 通过，1 = 有问题，3 = 用法错误
 """
@@ -50,6 +54,12 @@ VAGUE_WORDS = ["好看", "电影感", "大片感", "高级感", "氛围感", "�
                "震撼", "唯美", "高大上", "绝了"]
 # 画面红线：负向词里必须拦住的东西
 RED_LINE_NEG = ["二维码", "logo", "水印"]
+# 正向 prompt 里也不许「既要又要」：这些词前面没有否定词就是要
+NEG_PREFIX = ("无", "不", "别", "没", "禁止", "去除", "去掉", "消除")
+# 提示词里不许出现的跨镜空话（衔接靠 handoffs，不靠 prompt）
+PROMPT_FILLER = ["保持连续", "同上", "同前", "照旧", "照搬上一镜"]
+# ending.end_state 里的收尾空话
+ENDING_FILLER = ["画面收尾", "自然收尾", "自然结束", "平稳结束", "完整收尾", "干净收尾"]
 # 提示词里出现这些词，要人确认不是医疗对比 / 血腥 / 擦边
 DANGER_PROMPT = ["伤口", "血迹", "前后对比", "裸露", "低胸", "床戏"]
 # 授权表必填字段
@@ -57,6 +67,17 @@ AUTH_FIELDS = ["real_person", "minor", "brand_logo", "medical_claim"]
 # 声音三件套：台词（或 silent_reason）+ 环境音 + 配乐（或 no_music_reason）
 SOUND_WORDS = ["声音", "音效", "环境音", "底噪"]
 MUSIC_WORDS = ["BGM", "配乐", "音乐", "non_diegetic"]
+# 通用化理由黑名单：这些话等于没写，模型靠它们绕过台词/配乐门禁
+GENERIC_REASON = [
+    "无台词", "没台词", "没有台词", "不需要台词", "不用台词",
+    "静默", "无声", "没声音", "不需要声音", "不用声音",
+    "纯画面", "画面展示", "环境展示", "空镜", "无音乐", "不需要音乐",
+    "没配乐", "无配乐", "背景音乐",
+]
+# 合法理由至少要这么长（写清楚"为什么这一镜没台词/没配乐"，不是一句"无台词"）
+REASON_MIN_LEN = 12
+# 对话审批时，用户那句确认里至少要出现一个明确的肯定词
+CHAT_CONFIRM_WORDS = ("可以", "好", "确认", "没问题", "继续", "行", "ok", "OK")
 # 每一镜都要推进剧情
 BEAT_REQUIRED = True
 # 后续镜必须有「接上一镜」衔接
@@ -106,8 +127,16 @@ def strip_global_hold(prompt: str) -> str:
     )
 
 
-def check(data: dict, require_review: bool = True, strict: bool = False) -> list[str]:
+def check(
+    data: dict,
+    require_review: bool = True,
+    strict: bool = True,
+    story_text: str | None = None,
+) -> list[str]:
     problems: list[str] = []
+
+    if not isinstance(data, dict):
+        return ["storyboard 顶层必须是 JSON 对象"]
 
     meta = data.get("meta")
     if not isinstance(meta, dict):
@@ -144,18 +173,36 @@ def check(data: dict, require_review: bool = True, strict: bool = False) -> list
             if stored != content_hash(data):
                 problems.append(
                     "审批后内容被改过（content_hash 对不上）——这次审批已作废，"
-                    "请用户本人重跑 scripts/approve.py"
+                    "重新给用户看改过的部分，他说「可以」后再跑一次 scripts/approve.py"
                 )
         if strict:
             if not stored:
                 problems.append(
-                    "--strict 模式要求 meta.review.content_hash —— 必须由用户本人在终端跑 "
-                    "scripts/approve.py，模型自己写的 true 不算"
+                    "强制审核要求 meta.review.content_hash —— 没有审批记录。做法："
+                    "把故事和提示词摊给用户看，他明确说「可以」后，由技能自己跑 "
+                    "scripts/approve.py --chat --quote \"<用户原话>\""
+                    "（用户不必开终端；没说「可以」就不许跑）"
                 )
-            elif review.get("approved_by") != "user-tty":
-                problems.append(
-                    f"--strict 模式要求 meta.review.approved_by = user-tty，当前是 {review.get('approved_by')!r}"
-                )
+            else:
+                by = review.get("approved_by")
+                if by == "user-tty":
+                    pass
+                elif by == "user-chat":
+                    quote = (review.get("confirmed_quote") or "").strip()
+                    if not quote:
+                        problems.append(
+                            "对话审批缺 confirmed_quote —— 必须原样记录用户说「可以」的那句话，"
+                            "不许自己编"
+                        )
+                    elif not any(w in quote for w in CHAT_CONFIRM_WORDS):
+                        problems.append(
+                            f"confirmed_quote 里没有明确的肯定词（当前 {quote!r}）——"
+                            "用户没说「可以 / 好 / 确认 / 没问题 / 继续」就不算审批通过"
+                        )
+                else:
+                    problems.append(
+                        f"meta.review.approved_by 只能是 user-tty 或 user-chat，当前是 {by!r}"
+                    )
 
     auth = meta.get("authorization")
     if not isinstance(auth, dict):
@@ -183,6 +230,13 @@ def check(data: dict, require_review: bool = True, strict: bool = False) -> list
             problems.append(f"角色 {cid}: 缺少 identity_anchor（身份锚点）")
 
     shots = data.get("shots") or []
+    if not isinstance(shots, list):
+        return problems + ["shots 必须是数组"]
+    bad_shots = [i + 1 for i, s in enumerate(shots) if not isinstance(s, dict)]
+    if bad_shots:
+        return problems + [
+            f"shots 第 {i} 个镜头不是对象（每个镜头必须是 {{...}}）" for i in bad_shots
+        ]
     if not shots:
         return problems + ["shots 为空"]
 
@@ -316,16 +370,47 @@ def check(data: dict, require_review: bool = True, strict: bool = False) -> list
             problems.append(
                 f"{where}: 有台词，但画面没写「在说话」——生成出来人不会张嘴，后配音也对不上"
             )
+        if line and not silent and s.get("duration"):
+            # 按最长的单句算语速：多人口播合在一起会把平均值拉低，看不出问题
+            longest = max(
+                (
+                    re.sub(r"[^\u4e00-\u9fa5A-Za-z0-9]", "", seg.split("：")[-1].split(":")[-1])
+                    for seg in line.split()
+                ),
+                key=len,
+                default="",
+            )
+            rate = len(longest) / float(s["duration"])
+            if rate > 8:
+                problems.append(
+                    f"{where}: 最长一句 {len(longest)} 字塞进 {s['duration']} 秒（每秒 {rate:.1f} 字），"
+                    "正常口播 5–6 字/秒，超过 8 字/秒基本说不完；加时长或删字"
+                )
 
         # ===== 声音三件套 =====
         if not has_any(prompt, SOUND_WORDS):
             problems.append(f"{where}: prompt 里没有「声音」段——台词 / 环境音 / 配乐都得写")
         says_no_music = any(w in prompt for w in ("无配乐", "无音乐", "不要配乐", "不要音乐", "不加配乐"))
         has_music = has_any(prompt, MUSIC_WORDS) and not says_no_music
-        if not has_music and not (s.get("no_music_reason") or "").strip():
+        no_music_reason = (s.get("no_music_reason") or "").strip()
+        if not has_music and not no_music_reason:
             problems.append(f"{where}: 没写配乐（BGM / 配乐 / 音乐）；真不要音乐就写 no_music_reason")
-        if silent and not (s.get("silent_reason") or "").strip():
-            problems.append(f"{where}: 标了 silent 但没写 silent_reason——为什么这一镜没台词？")
+        elif not has_music and no_music_reason:
+            if len(no_music_reason) < REASON_MIN_LEN or no_music_reason in GENERIC_REASON:
+                problems.append(
+                    f"{where}: no_music_reason 太敷衍（「{no_music_reason}」）——"
+                    "写清楚为什么这一镜不要配乐，比如『全程只有环境音，突出人物独处的压抑感』"
+                )
+        if silent:
+            silent_reason = (s.get("silent_reason") or "").strip()
+            if not silent_reason:
+                problems.append(f"{where}: 标了 silent 但没写 silent_reason——为什么这一镜没台词？")
+            elif len(silent_reason) < REASON_MIN_LEN or silent_reason in GENERIC_REASON:
+                problems.append(
+                    f"{where}: silent_reason 太敷衍（「{silent_reason}」）——"
+                    "写清楚为什么这一镜没人说话，比如『她还没鼓起勇气开口，只有呼吸声』；"
+                    "故事里有人在说话就不许标 silent"
+                )
 
         # ===== 负向词 / 角色引用 =====
 
@@ -336,6 +421,25 @@ def check(data: dict, require_review: bool = True, strict: bool = False) -> list
             for word in RED_LINE_NEG:
                 if word.lower() not in negative.lower():
                     problems.append(f"{where}: 负向词缺「{word}」（画面红线）")
+
+        prompt_text = s.get("prompt") or ""
+        for word in PROMPT_FILLER:
+            if word in prompt_text:
+                problems.append(
+                    f"{where}: prompt 里出现衔接空话「{word}」——"
+                    "衔接写进 handoffs 的 end_state/next_start_state，prompt 只写这一镜看得见的内容"
+                )
+        lower_prompt = prompt_text.lower()
+        for word in RED_LINE_NEG:
+            idx = lower_prompt.find(word.lower())
+            while idx != -1:
+                prefix = lower_prompt[max(0, idx - 4):idx]
+                if not any(p in prefix for p in NEG_PREFIX):
+                    problems.append(
+                        f"{where}: prompt 里要「{word}」——负向词说不要、正向词却要，自相矛盾"
+                    )
+                    break
+                idx = lower_prompt.find(word.lower(), idx + 1)
         for ref in s.get("character_refs") or []:
             if ref not in chars:
                 problems.append(f"{where}: character_refs 里的 `{ref}` 不在 characters 里")
@@ -379,10 +483,33 @@ def check(data: dict, require_review: bool = True, strict: bool = False) -> list
     if shots and all(
         bool(s.get("silent")) or not (s.get("line") or "").strip() for s in shots
     ):
-        if not (meta.get("no_dialogue_reason") or "").strip():
+        no_dlg = (meta.get("no_dialogue_reason") or "").strip()
+        if not no_dlg:
             problems.append(
                 "全片没有一个镜头有台词——故事里真没人说话就写 meta.no_dialogue_reason，"
                 "否则回去把 story.md 里的台词补成 line（常见错误：把「她说了两句」当动作）"
+            )
+        elif len(no_dlg) < REASON_MIN_LEN or no_dlg in GENERIC_REASON:
+            problems.append(
+                f"meta.no_dialogue_reason 太敷衍（「{no_dlg}」）——"
+                "全片没人说话是很反常的，必须写清楚为什么："
+                "比如『纯风景展示片，无人出镜』；故事里有人在说话就不许全片 silent"
+            )
+
+    # 台词对账：拿 story.md 反查，堵住「把整片静默当捷径」的口子
+    if story_text and shots:
+        quotes = re.findall(r"[「“\"]([^」”\"]{4,})[」”\"]", story_text)
+        speech_cue = any(
+            k in story_text
+            for k in ("口播", "对白", "独白", "对着镜头说", "她说", "他说", "录视频", "说话")
+        )
+        has_line = any((s.get("line") or "").strip() for s in shots)
+        no_dlg_reason = (meta.get("no_dialogue_reason") or "").strip()
+        if (len(quotes) >= 2 or speech_cue) and not has_line and not no_dlg_reason:
+            problems.append(
+                f"story.md 里明显有人说话（引号台词 {len(quotes)} 处 / 口播对白线索），"
+                "分镜却一句 line 都没有——台词漏了，回去把 story.md 的话逐句抄进对应镜的 line；"
+                "真不说话就在 meta.no_dialogue_reason 写清楚为什么"
             )
 
     ending = data.get("ending")
@@ -398,6 +525,9 @@ def check(data: dict, require_review: bool = True, strict: bool = False) -> list
             for word in VAGUE:
                 if word in end_state:
                     problems.append(f"ending.end_state 出现空话「{word}」，要写成可见画面")
+            for word in ENDING_FILLER:
+                if word in end_state:
+                    problems.append(f"ending.end_state 出现空话「{word}」，要写成最后一帧看得见的画面")
 
     return problems
 
@@ -416,44 +546,147 @@ def self_test() -> int:
     if baseline:
         return fail("模板结构本身不过门禁：", baseline)
 
+    # 坏结构不许崩，要报错
+    broken = copy.deepcopy(data)
+    broken["shots"][1] = 123
+    try:
+        broken_problems = check(broken, require_review=False)
+    except Exception as e:  # noqa: BLE001
+        return fail(f"镜头不是对象时崩了：{type(e).__name__}: {e}", [])
+    if not any("不是对象" in p for p in broken_problems):
+        return fail("镜头不是对象应被报错：", broken_problems)
+
+    # prompt 里写衔接空话 → 拦
+    filler = copy.deepcopy(data)
+    filler["shots"][0]["prompt"] += " 保持连续"
+    if not any("衔接空话" in p for p in check(filler, require_review=False)):
+        return fail("prompt 写「保持连续」应被拦：", check(filler, require_review=False))
+
+    # 正向 prompt 要水印 → 拦；写「无水印」→ 放行
+    watermark = copy.deepcopy(data)
+    watermark["shots"][0]["prompt"] += " 右下角加个水印"
+    if not any("自相矛盾" in p for p in check(watermark, require_review=False)):
+        return fail("prompt 要水印应被拦：", check(watermark, require_review=False))
+    no_watermark = copy.deepcopy(data)
+    no_watermark["shots"][0]["prompt"] += "，无水印、无文字"
+    if any("自相矛盾" in p for p in check(no_watermark, require_review=False)):
+        return fail("prompt 写「无水印」不应误报：", check(no_watermark, require_review=False))
+
+    # 台词对账：story 有人说话、分镜全静默 → 拦
+    silent_board = copy.deepcopy(data)
+    for s in silent_board["shots"]:
+        s["line"] = ""
+        s["silent"] = True
+        s["silent_reason"] = "空镜过渡：人物还没入画，只有窗外车流声与远处人声"
+    silent_board["meta"].pop("no_dialogue_reason", None)
+    story_with_speech = "她说：「今天必须把这条录完。」\n她又说：「不行，再来一次。」"
+    hits = check(silent_board, require_review=False, story_text=story_with_speech)
+    if not any("台词漏了" in p for p in hits):
+        return fail("story 有人说话、分镜全静默应被拦：", hits)
+    hits = check(silent_board, require_review=False, story_text="纯风景片，无人出镜。")
+    if any("台词漏了" in p for p in hits):
+        return fail("story 没有台词线索时不应误报：", hits)
+
     forged = copy.deepcopy(data)
     forged["meta"]["review"] = {"story_approved": True, "prompts_approved": True}
-    if check(forged, require_review=True):
-        return fail("默认模式应向后兼容旧的 true 写法：", check(forged, require_review=True))
-
-    strict_problems = check(forged, require_review=True, strict=True)
-    if len(strict_problems) != 1 or "content_hash" not in strict_problems[0]:
-        return fail("strict 模式应因缺 content_hash 只报 1 条：", strict_problems)
+    forged_problems = check(forged, require_review=True)
+    if len(forged_problems) != 1 or "content_hash" not in forged_problems[0]:
+        return fail("默认应因缺 content_hash 只报 1 条（伪造 true 不算过）：", forged_problems)
 
     approved = copy.deepcopy(forged)
     approved["meta"]["review"].update({
         "content_hash": content_hash(approved),
         "approved_by": "user-tty",
+        "approved_at": "2026-11-10T17:00:00+08:00",
     })
-    if check(approved, require_review=True, strict=True):
-        return fail("带指纹的审批应当通过：", check(approved, require_review=True, strict=True))
+    if check(approved, require_review=True):
+        return fail("带指纹的真人审批应当通过：", check(approved, require_review=True))
 
     tampered = copy.deepcopy(approved)
     tampered["shots"][0]["prompt"] += "（偷偷改了一句）"
-    tampered_problems = check(tampered, require_review=True, strict=True)
+    tampered_problems = check(tampered, require_review=True)
     if len(tampered_problems) != 1 or "content_hash" not in tampered_problems[0]:
         return fail("审批后改内容应当报指纹不符：", tampered_problems)
 
-    print("[SELF-TEST PASS] 结构合法 / 未审核被拦 / 伪造 true 在 strict 下被拦 / 审批后改动失效")
+    legacy = check(forged, require_review=True, strict=False)
+    if legacy:
+        return fail("--no-strict 应兼容旧的 true 写法：", legacy)
+
+    chat = copy.deepcopy(forged)
+    chat["meta"]["review"].update({
+        "content_hash": content_hash(chat),
+        "approved_by": "user-chat",
+        "confirmed_quote": "可以，就按这个来",
+    })
+    if check(chat, require_review=True):
+        return fail("对话审批（带用户原话）应当通过：", check(chat, require_review=True))
+
+    chat_no_quote = copy.deepcopy(forged)
+    chat_no_quote["meta"]["review"].update({
+        "content_hash": content_hash(chat_no_quote),
+        "approved_by": "user-chat",
+    })
+    problems = check(chat_no_quote, require_review=True)
+    if not any("confirmed_quote" in p for p in problems):
+        return fail("对话审批缺用户原话应被拦：", problems)
+
+    chat_weak = copy.deepcopy(forged)
+    chat_weak["meta"]["review"].update({
+        "content_hash": content_hash(chat_weak),
+        "approved_by": "user-chat",
+        "confirmed_quote": "我再想想",
+    })
+    problems = check(chat_weak, require_review=True)
+    if not any("肯定词" in p for p in problems):
+        return fail("对话审批原话没有肯定词应被拦：", problems)
+
+    fast = copy.deepcopy(data)
+    fast["shots"][0]["duration"] = 2
+    fast["shots"][0]["end"] = fast["shots"][0]["start"] + 2
+    fast["shots"][0]["line"] = "我今天必须把这段话全部说完不然真的来不及了你们听清楚了吗"
+    hits = check(fast, require_review=False)
+    if not any("说不完" in p for p in hits):
+        return fail("台词密度过高应被拦：", hits)
+
+    print("[SELF-TEST PASS] 结构合法 / 坏结构不崩 / 衔接空话被拦 / 正向红线自相矛盾被拦 / "
+          "story 台词对账生效且不误报 / 台词密度过高被拦 / 未审核被拦 / 伪造 true 被拦 / 审批后改动失效 / "
+          "对话审批缺原话被拦 / 对话审批无肯定词被拦 / --no-strict 兼容旧写法")
     return 0
 
 
 def main() -> int:
-    argv = sys.argv[1:]
-    if "--self-test" in argv:
+    import argparse
+
+    ap = argparse.ArgumentParser(
+        description="分镜 / 衔接 / 声音 / 审核门禁",
+        usage="%(prog)s [storyboard.json] [--sample] [--content-only] [--no-strict] [--story story.md] [--self-test]",
+    )
+    ap.add_argument("file", nargs="?", help="storyboard.json 路径（位置参数）")
+    ap.add_argument("--file", dest="file_opt", help="storyboard.json 路径（与位置参数二选一）")
+    ap.add_argument("--story", help="story.md 路径（默认自动找同目录 story.md）")
+    ap.add_argument("--sample", action="store_true", help="只验模板结构，跳过 review 门禁")
+    ap.add_argument("--content-only", action="store_true", help="只验内容，不看审批（用户审核前自审用）")
+    ap.add_argument("--no-strict", action="store_true", help="旧产物过渡：只认 true，不认审批记录")
+    ap.add_argument("--self-test", action="store_true", help="验证门禁本身")
+    try:
+        args = ap.parse_args()
+    except SystemExit as e:
+        return 3 if e.code else 0
+
+    if args.self_test:
         return self_test()
-    require_review = "--sample" not in argv
-    strict = "--strict" in argv
-    args = [a for a in argv if not a.startswith("-")]
-    if "--sample" in argv or not args:
+
+    if args.file and args.file_opt:
+        print("✗ 位置参数和 --file 只能给一个")
+        return 3
+
+    require_review = not (args.sample or args.content_only)
+    strict = not args.no_strict  # 默认就是强制审核；--no-strict 只给旧产物过渡
+    target = args.file_opt or args.file
+    if args.sample or not target:
         path = SAMPLE
     else:
-        path = pathlib.Path(args[0])
+        path = pathlib.Path(target)
     if not path.is_file():
         print(f"找不到文件：{path}")
         return 3
@@ -464,8 +697,21 @@ def main() -> int:
         return 3
 
     if not require_review:
-        print("[INFO] --sample：只验结构，跳过 review 门禁")
-    problems = check(data, require_review=require_review, strict=strict)
+        print("[INFO] 只验内容，跳过 review 门禁")
+
+    story_text = None
+    story_path = pathlib.Path(args.story) if args.story else path.parent / "story.md"
+    if story_path.is_file():
+        try:
+            story_text = story_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            story_text = None
+        if story_text:
+            print(f"[INFO] 台词对账：已读 {story_path.name}")
+    elif args.story:
+        print(f"⚠ 找不到 --story 指定的文件：{story_path}")
+
+    problems = check(data, require_review=require_review, strict=strict, story_text=story_text)
     if problems:
         for p in problems:
             print(f"[FAIL] {p}")

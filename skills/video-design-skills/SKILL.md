@@ -28,7 +28,7 @@ description: 自媒体 / 直播技能包的唯一入口：初始化时装出文�
 | 写文案 / 写口播 / 写话术 | `copy-video-studio` |
 | 把文案做成视频 / 拆分镜 / 逐镜提示词 / 多段怎么接 | `video-studio` |
 | 先写文案再做视频，一条龙 | 依次交给 `copy-video-studio` → `video-studio` |
-| JD 模板 / 面试评分表 | `copy-video-studio/assets/host-jd-template.md`，人工复制使用 |
+| JD 模板 / 面试评分表 | `copy-video-studio/assets/host-jd-template.md`，填好落盘后给文件 |
 
 **分流规则**：
 - 用户已经在说具体活 → 直接进对应技能，别绕
@@ -118,10 +118,11 @@ python3 scripts/reconcile-skills.py
 1. `~/.video-design/video.json` 在不在 → 不在就是没渲染
 2. `~/.video-design/skills/` 下有两个目录吗 → 少了就重跑渲染
 3. 他的 AI 工具目录里有没有软链 → 没有就重跑注册
-4. 他的工具支不支持 skills 目录 → 不支持就把 SKILL.md content 贴进系统提示词
+4. 他的工具支不支持 skills 目录 → 不支持就说明这个工具加载不了技能，别硬装
 
 ## 边界
 
+- 一律走脚本，不手拍（手拍会漏工具、留下断链）。
 - 只写 `~/.video-design/` 和探测到的工具技能目录。
 - 不写工具根目录，不写别的工具的旧版路径。
 - 不碰用户已有的技能（只增删自己产出的那两个）。

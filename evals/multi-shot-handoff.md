@@ -96,12 +96,20 @@
       "file": "*.md",
       "match": [
         "BGM|配乐|音乐|non_diegetic"
+      ],
+      "not_match": [
+        "无配乐",
+        "无音乐"
       ]
     },
     {
       "file": "*.md",
       "match": [
         "环境音|底噪|音效"
+      ],
+      "not_match": [
+        "无环境音",
+        "无音效"
       ]
     }
   ]

@@ -128,7 +128,7 @@ def main() -> int:
 
     if not chosen:
         print("\n没探测到任何 AI 工具的技能目录，没有可注册的目标。")
-        print("把 SKILL.md 内容贴进你的 AI 工具的系统提示词也能用。")
+        print("先在这个 AI 工具里装一次技能支持，再重跑本脚本；别手动贴提示词凑。")
     elif not args.all and not args.tool:
         others = [t["label"] for t in available[1:]]
         if others:

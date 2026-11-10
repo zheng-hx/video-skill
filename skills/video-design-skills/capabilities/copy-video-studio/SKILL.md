@@ -2,7 +2,7 @@
 name: copy-video-studio
 slug: copy-video-studio
 displayName: 文案工坊
-version: 0.3.0
+version: 0.3.1
 description: 文案工坊。用户说「写条文案 / 写个口播 / 写条话术 / 帮我发一条 / 再来一条」时使用。默认产出故事型文案（所有场景通用），带货/种草可切广告骨架。自动限流词黑名单替换，缺的信息按默认假设补齐并标注，不反复追问。要视频交给 video-studio。
 ---
 
@@ -237,7 +237,7 @@ output/<YYYY-MM-DD>-<一句话主题>/script.md
 【合规·禁用/风险/待确认】原句 → 改法（没有就写「无」）
 ```
 
-存不了文件就贴一个可复制代码块，并说明「复制走，做视频时贴给 `video-studio`」。
+落盘到 `output/<日期>-<slug>/script.md`，同时把全文摊给用户看——做视频时 `video-studio` 直接读这个文件。
 
 ## 交付要人话
 
@@ -250,7 +250,7 @@ output/<YYYY-MM-DD>-<一句话主题>/script.md
 
 - 用户要视频 → 交给 `video-studio`，把 `script.md` 路径（或全文）+ 已确认设定一起带过去。
 - **不写分镜、不写提示词**——那是视频技能的事，写浅了会拖累整条。
-- 没有文件能力时贴完整文案，标「复制走」。
+- 交接带路径：`output/<日期>-<slug>/script.md` + 已确认设定，不重贴一遍全文。
 
 ## 质量门槛
 
@@ -290,7 +290,7 @@ output/<YYYY-MM-DD>-<一句话主题>/script.md
 - `references/library.md`：文案知识库——入库 / 检索 / 规则变更 / 复审
 - `references/rules-refresh.md`：规则自动刷新——什么时候刷、从哪刷、刷完怎么存
 - `references/platform-differences.md`：抖音 / 快手 / 视频号 / 小红书的红线松紧与内容偏好
-- `references/no-tools.md`：零工具降级路线——剪映合成 / 没数字人平台 / 没生视频工具 / 存不了文件
+- `references/no-tools.md`：零工具降级路线——剪映合成 / 没数字人平台 / 没生视频工具
 - `assets/brief-template.md`：视频制作 brief 模板（分镜表 + 包装要求 + 成片自检）
 - `references/host-recruit.md`：主播筛选 / 面试方法论（行业参考，非产出物）
 - `assets/rules-snapshot.md`：当前规则快照（红线词 / 限流词 / 处罚阶梯）

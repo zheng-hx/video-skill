@@ -16,6 +16,7 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
+import unicodedata
 
 SNAPSHOT = pathlib.Path(__file__).resolve().parents[1] / "assets" / "rules-snapshot.md"
 
@@ -37,6 +38,8 @@ THROTTLED = {
 
 SELF_TEST = "招主播，保底 6000，月入过万，全网最好，加微信详聊。"
 SELF_TEST_CLEAN = "今天天气不错，我们去公园走走。"
+# 加空格 / 全角空格 / 间隔号 的规避写法，扫描器必须也能抓到
+SELF_TEST_EVASION = ["招 主 播", "招　聘", "加·微·信", "最 好 用", "加ｖ详聊"]
 
 
 def _block_words(text: str, title: str) -> list[str]:
@@ -54,26 +57,37 @@ def load_snapshot_words() -> tuple[list[str], list[str]]:
     return _block_words(text, "当前红线词"), _block_words(text, "当前限流词")
 
 
+def _normalize(text: str) -> str:
+    """抹平规避写法：全角转半角，去掉空白和视觉分隔符（招 聘 / 招　聘 / 加·微·信）。"""
+    text = unicodedata.normalize("NFKC", text)
+    return re.sub(r"[\s·・\-_/|*]+", "", text).lower()
+
+
+def _hit(normalized: str, word: str) -> bool:
+    return _normalize(word) in normalized
+
+
 def scan(text: str) -> list[tuple[str, str, str]]:
     snap_illegal, snap_throttled = load_snapshot_words()
+    normalized = _normalize(text)
     hits: list[tuple[str, str, str]] = []
     if snap_illegal:
         for w in snap_illegal:
-            if w in text:
+            if _hit(normalized, w):
                 hits.append(("违规", "快照·红线", w))
     else:
         for group, words in ILLEGAL.items():
             for w in words:
-                if w in text:
+                if _hit(normalized, w):
                     hits.append(("违规", group, w))
     if snap_throttled:
         for w in snap_throttled:
-            if w in text:
+            if _hit(normalized, w):
                 hits.append(("限流", "快照·限流", w))
     else:
         for group, words in THROTTLED.items():
             for w in words:
-                if w in text:
+                if _hit(normalized, w):
                     hits.append(("限流", group, w))
     return hits
 
@@ -96,13 +110,18 @@ def self_test() -> int:
     if clean_hits:
         problems.append("干净样本被误报：" + "、".join(w for _, _, w in clean_hits))
 
+    for sample in SELF_TEST_EVASION:
+        if not scan(sample):
+            problems.append(f"规避写法「{sample}」漏检")
+
     if problems:
         print("\n[SELF-TEST FAIL]")
         for p in problems:
             print(f"  - {p}")
         return 1
 
-    print(f"\n[SELF-TEST PASS] 违规 {len(illegal)} 处、限流 {len(throttled)} 处全部命中；干净样本 0 误报")
+    print(f"\n[SELF-TEST PASS] 违规 {len(illegal)} 处、限流 {len(throttled)} 处全部命中；"
+          f"干净样本 0 误报；{len(SELF_TEST_EVASION)} 种规避写法全部识破")
     return 0
 
 

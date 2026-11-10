@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -42,6 +43,21 @@ def default_workbench() -> Path:
         except (json.JSONDecodeError, OSError):
             pass
     return DEFAULT_WB
+
+
+def content_fingerprint() -> str:
+    """capabilities/ 的内容指纹：版本号不变、内容变了也能识别出来。"""
+    h = hashlib.sha256()
+    for path in sorted(CAPS.rglob("*")):
+        if path.is_dir() or path.name in SKIP or "__pycache__" in path.parts:
+            continue
+        if path.suffix == ".pyc":
+            continue
+        h.update(path.relative_to(CAPS).as_posix().encode("utf-8"))
+        h.update(b"\0")
+        h.update(path.read_bytes())
+        h.update(b"\0")
+    return h.hexdigest()
 
 
 def package_version() -> str:
@@ -94,14 +110,20 @@ def main() -> int:
     print(f"版本：{ver}")
 
     # 已装版本：与当前包相同才跳过；不同（升级/降级）就覆盖技能目录，用户的 output/ 不动
+    fingerprint = content_fingerprint()
     installed_ver = ""
+    installed_fp = ""
     if manifest_path.is_file():
         try:
-            installed_ver = json.loads(manifest_path.read_text(encoding="utf-8")).get("version", "")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            installed_ver = manifest.get("version", "")
+            installed_fp = manifest.get("contentHash", "")
         except (json.JSONDecodeError, OSError):
-            installed_ver = ""
+            pass
     if installed_ver and installed_ver != ver:
         print(f"已装版本：{installed_ver}（将覆盖为 {ver}）")
+    elif installed_ver and installed_fp != fingerprint:
+        print("版本没变，但技能内容变了（将覆盖）—— 防止「改了没生效」")
 
     if not args.dry_run:
         skills_dst.mkdir(parents=True, exist_ok=True)
@@ -109,8 +131,8 @@ def main() -> int:
     actions: dict[str, str] = {}
     for d in dirs:
         dst = skills_dst / d.name
-        if dst.exists() and not args.force and installed_ver == ver:
-            actions[d.name] = "skipped (same version)"
+        if dst.exists() and not args.force and installed_ver == ver and installed_fp == fingerprint:
+            actions[d.name] = "skipped (same version + same content)"
             continue
         actions[d.name] = render_one(d, dst, args.dry_run)
 
@@ -131,6 +153,7 @@ def main() -> int:
         manifest = {
             "package": "video-design-skills",
             "version": ver,
+            "contentHash": fingerprint,
             "renderedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "workbench": str(wb),
             "skills": [d.name for d in dirs],
