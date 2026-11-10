@@ -4,6 +4,7 @@
     { "label": "Claude Code", "dir": "~/.claude/skills", "mode": "symlink" },
     { "label": "Codex", "dir": "~/.codex/skills", "mode": "symlink" },
     { "label": "WorkBuddy", "dir": "~/.workbuddy/skills", "mode": "symlink" },
-    { "label": "Cursor", "dir": "~/.cursor/skills", "mode": "symlink" }
+    { "label": "Cursor", "dir": "~/.cursor/skills", "mode": "symlink" },
+    { "label": "Trae CN", "dir": "~/.trae-cn/skills", "mode": "symlink" }
   ]
 }

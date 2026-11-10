@@ -5,9 +5,7 @@
     ├── video.json
     └── skills/
         ├── copy-video-studio/
-        ├── video-studio/
-        ├── live-media-ops/
-        └── live-media-router/
+        └── video-studio/
 
 用法：
     python3 scripts/render-package.py            # 渲染（已是最新就跳过）

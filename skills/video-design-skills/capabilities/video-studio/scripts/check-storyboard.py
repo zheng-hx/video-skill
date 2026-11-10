@@ -4,6 +4,12 @@
 只查机器能查的东西：字段齐不齐、时长对不对、衔接合同有没有写、
 首尾状态是不是空话。不评价画面好不好看。
 
+v2.0 更新（2026-11-10）：配合共享/独有字段分层。
+  - 首镜：必须包含完整 style_anchor + identity_anchor + 光线关键词（共享字段）
+  - 后续镜：必须包含「全局保持」行（重申共享锚点）+「接上一镜」行（衔接动作）
+  - 旧版要求每镜都完整风格锚 → 改为后续镜只查「全局保持」行里有就行
+  - 旧版检查后续镜开头不能和上一镜重复 → 改为检查「全局保持」行之后的独有内容
+
 用法：
     python3 scripts/check-storyboard.py storyboard.json
     python3 scripts/check-storyboard.py --sample   # 校验自带模板
@@ -29,7 +35,7 @@ CAMERA_WORDS = ["特写", "近景", "中景", "全景", "远景", "半身", "全
                 "移", "跟拍", "升降", "环绕", "固定", "静止", "俯拍", "仰拍",
                 "低角度", "高角度", "等效"]
 LIGHT_WORDS = ["自然光", "侧光", "逆光", "顶光", "柔光", "硬光", "灯光", "窗光",
-               "光比", "色温", "光源", "冷光", "暖光"]
+               "光比", "色温", "光源", "冷光", "暖光", "光线"]
 # 评价性模糊词：是判断不是描述，模型拿不到参数
 VAGUE_WORDS = ["好看", "电影感", "大片感", "高级感", "氛围感", "有质感",
                "震撼", "唯美", "高大上", "绝了"]
@@ -39,11 +45,12 @@ RED_LINE_NEG = ["二维码", "logo", "水印"]
 DANGER_PROMPT = ["伤口", "血迹", "前后对比", "裸露", "低胸", "床戏"]
 # 授权表必填字段
 AUTH_FIELDS = ["real_person", "minor", "brand_logo", "medical_claim"]
-# 每一镜都要推进剧情，且相邻镜的景别/运镜不能一样
+# 每一镜都要推进剧情
 BEAT_REQUIRED = True
-# 首镜完整，后续续接：非首镜必须写衔接，且不能重复上一镜开头
+# 后续镜必须有「接上一镜」衔接
 CONTINUE_WORDS = ["接上一镜", "从上一镜", "接着上一镜", "衔接上一镜"]
-REPEAT_PREFIX = 15
+# 后续镜必须有「全局保持」重申共享锚点
+GLOBAL_HOLD_WORDS = ["全局保持"]
 # 有台词就必须在说话：画面里嘴不动，后配音也救不回来
 SPEAK_WORDS = ["说话", "开口", "张口", "口型", "对白", "念白", "说道", "嘴唇微动", "正在说"]
 # 构图 / 质感：提示词里必须写到，不然画面是飘的
@@ -65,6 +72,26 @@ def norm(text: str) -> str:
 
 def load(path: pathlib.Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def has_any(text: str, words: list[str]) -> bool:
+    return any(w in text for w in words)
+
+
+def extract_global_hold_line(prompt: str) -> str | None:
+    """从后续镜 prompt 开头提取「全局保持：...」这一行。"""
+    for line in (prompt or "").split("\n")[:5]:
+        if "全局保持" in line:
+            return line
+    return None
+
+
+def strip_global_hold(prompt: str) -> str:
+    """去掉「全局保持」行，取后续独有内容。"""
+    return "\n".join(
+        line for line in (prompt or "").split("\n")
+        if "全局保持" not in line
+    )
 
 
 def check(data: dict) -> list[str]:
@@ -103,6 +130,9 @@ def check(data: dict) -> list[str]:
     style_anchor = (data.get("style_anchor") or "").strip()
     if not style_anchor:
         problems.append("缺少 style_anchor（风格锚）")
+
+    global_identity = (data.get("global_identity_anchor") or "").strip()
+    global_light = (data.get("global_light_base") or "").strip()
 
     chars = {c.get("id"): c for c in data.get("characters", []) if isinstance(c, dict)}
     for cid, c in chars.items():
@@ -158,18 +188,57 @@ def check(data: dict) -> list[str]:
             )
         prompt = (s.get("prompt") or "").strip()
         beat = (s.get("beat") or "").strip()
+        is_first = bool(s.get("is_first")) or (i == 0)
+
         if BEAT_REQUIRED and not beat:
             problems.append(f"{where}: 缺少 beat（这一镜推进了什么剧情），容易变成并列画面")
-        if i > 0:
-            prev = shots[i - 1]
-            if s.get("framing") and s.get("framing") == prev.get("framing") and \
-               s.get("camera") and s.get("camera") == prev.get("camera"):
-                problems.append(f"{where}: 景别和运镜都和上一镜一样，画面会像重复")
-            if not any(w in prompt[:80] for w in CONTINUE_WORDS):
-                problems.append(f"{where}: 非首镜没写「接上一镜」，动作接不上")
-            if prev_prompt and prompt[:REPEAT_PREFIX] == prev_prompt[:REPEAT_PREFIX]:
-                problems.append(f"{where}: 开头和上一镜重复，像复制粘贴，等于让模型从零重画")
+
+        # ===== 新门禁逻辑：首镜 vs 后续镜 =====
+
+        if is_first:
+            # 首镜：必须包含完整共享字段
+            if style_anchor and style_anchor not in prompt:
+                problems.append(f"{where}: 首镜 prompt 必须包含完整风格锚「{style_anchor}」")
+            if global_identity and global_identity not in prompt:
+                problems.append(f"{where}: 首镜 prompt 必须包含完整身份锚点「{global_identity}」")
+            # 光线关键词：至少有一个
+            if not has_any(prompt, LIGHT_WORDS):
+                problems.append(f"{where}: 首镜 prompt 里没有光线关键词")
+        else:
+            # 后续镜：必须有「全局保持」行 + 「接上一镜」行
+            global_hold = extract_global_hold_line(prompt)
+            if not global_hold:
+                problems.append(
+                    f"{where}: 后续镜没有「全局保持」行——模型不知道这是同一个人、同一个世界"
+                )
+            else:
+                # 全局保持行里至少有共享锚点的关键词
+                if style_anchor:
+                    anchor_keywords = [w for w in style_anchor.split("、") if w.strip()]
+                    if not any(kw in global_hold for kw in anchor_keywords[:2]):
+                        problems.append(
+                            f"{where}: 「全局保持」行里没有风格锚关键词——必须重申共享锚点"
+                        )
+                if not has_any(global_hold, LIGHT_WORDS):
+                    problems.append(
+                        f"{where}: 「全局保持」行里没有光线关键词——必须重申光线基调"
+                    )
+
+            if not has_any(prompt[:200], CONTINUE_WORDS):
+                problems.append(f"{where}: 后续镜没写「接上一镜」，动作接不上")
+
+            # 检查"全局保持"之后的独有内容，不能和上一镜独有内容重复
+            curr_unique = strip_global_hold(prompt).strip()[:60]
+            prev_unique = strip_global_hold(prev_prompt).strip()[:60]
+            if curr_unique and curr_unique == prev_unique:
+                problems.append(
+                    f"{where}: 独有内容和上一镜重复——换动作、换构图、换景别"
+                )
+
         prev_prompt = prompt
+
+        # ===== 危险词 / 详细度（所有镜） =====
+
         for word in DANGER_PROMPT:
             if word in prompt:
                 problems.append(f"{where}: prompt 出现「{word}」，确认不是医疗对比/血腥/擦边镜头")
@@ -178,19 +247,22 @@ def check(data: dict) -> list[str]:
         else:
             if len(prompt) < DETAIL_MIN:
                 problems.append(f"{where}: prompt 只有 {len(prompt)} 字，至少 {DETAIL_MIN} 字才算写细")
-            if not any(w in prompt for w in CAMERA_WORDS):
+            if not has_any(prompt, CAMERA_WORDS):
                 problems.append(f"{where}: prompt 里没有镜头词（景别或运镜）")
-            if not any(w in prompt for w in LIGHT_WORDS):
+            if not has_any(prompt, LIGHT_WORDS):
                 problems.append(f"{where}: prompt 里没有光线词")
-            if not any(w in prompt for w in COMPOSITION_WORDS):
+            if not has_any(prompt, COMPOSITION_WORDS):
                 problems.append(f"{where}: prompt 里没有构图（主体位置 / 留白 / 前景）")
-            if not any(w in prompt for w in TEXTURE_WORDS):
+            if not has_any(prompt, TEXTURE_WORDS):
                 problems.append(f"{where}: prompt 里没有质感（材质 / 颗粒 / 锐度 / 调色）")
             for w in VAGUE_WORDS:
                 if w in prompt:
                     problems.append(f"{where}: 出现模糊词「{w}」，换成可拍参数")
-            if not any(w in prompt for w in CONSTRAINT_WORDS):
+            if not has_any(prompt, CONSTRAINT_WORDS):
                 problems.append(f"{where}: prompt 里没有约束层（防崩），至少写一句")
+
+        # ===== 台词检查 =====
+
         line = (s.get("line") or "").strip()
         silent = bool(s.get("silent"))
         if not line and not silent:
@@ -199,10 +271,12 @@ def check(data: dict) -> list[str]:
             problems.append(f"{where}: 台词没写进 prompt，生成时模型不知道说什么；把台词原文放进「声音」段")
         if line and not silent and not (s.get("character_refs") or []):
             problems.append(f"{where}: 有台词但没写 character_refs，不知道谁在说")
-        if line and not silent and not any(w in prompt for w in SPEAK_WORDS):
+        if line and not silent and not has_any(prompt, SPEAK_WORDS):
             problems.append(
                 f"{where}: 有台词，但画面没写「在说话」——生成出来人不会张嘴，后配音也对不上"
             )
+
+        # ===== 负向词 / 角色引用 =====
 
         negative = (s.get("negative") or "").strip()
         if not negative:
@@ -214,8 +288,6 @@ def check(data: dict) -> list[str]:
         for ref in s.get("character_refs") or []:
             if ref not in chars:
                 problems.append(f"{where}: character_refs 里的 `{ref}` 不在 characters 里")
-        if style_anchor and style_anchor not in (s.get("prompt") or ""):
-            problems.append(f"{where}: prompt 里没有风格锚「{style_anchor}」")
 
     if target and abs(total - target) > DURATION_TOLERANCE:
         problems.append(f"时长合计 {total:g} 秒，与 meta.duration {target:g} 秒不一致（允许 ±{DURATION_TOLERANCE:g}）")
@@ -245,6 +317,11 @@ def check(data: dict) -> list[str]:
                 for word in VAGUE:
                     if word in val:
                         problems.append(f"{tag}: {key} 出现空话「{word}」，要写成可见事实")
+            match_on = h.get("match_on") or []
+            if len(match_on) < 2:
+                problems.append(
+                    f"{tag}: match_on 至少写 2 个（wardrobe + lighting 几乎永远要有），否则模型换脸/换衣服"
+                )
     elif handoffs:
         problems.append("单条模式不需要 handoffs，删掉或改成 multi")
 
